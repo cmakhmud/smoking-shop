@@ -9,6 +9,11 @@ from django.utils import timezone
 from datetime import datetime, time as dt_time ,timedelta
 import logging
 
+# Add these missing imports
+from django.db import connection
+from django.contrib.auth.models import User
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
 from .models import Shop, Category, Good, Sale
@@ -26,7 +31,7 @@ def health_check(request):
             'status': 'healthy', 
             'database': 'connected',
             'users_count': user_count,
-            'debug': DEBUG
+            'debug': settings.DEBUG  # Use settings.DEBUG instead of DEBUG
         })
     except Exception as e:
         return JsonResponse({'status': 'error', 'database': str(e)})
