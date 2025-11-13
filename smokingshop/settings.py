@@ -1,6 +1,3 @@
-"""
-Django settings for smokingshop project.
-"""
 
 import os
 from pathlib import Path
