@@ -6,6 +6,9 @@ from django.contrib.auth import views as auth_views
 app_name = 'shop'
 
 urlpatterns = [
+    # Health check endpoint
+    path('health/', views.health_check, name='health'),
+    
     # Root redirect to login
     path('', lambda request: redirect('shop:login'), name='root_redirect'),
     

@@ -13,6 +13,23 @@ logger = logging.getLogger(__name__)
 
 from .models import Shop, Category, Good, Sale
 
+def health_check(request):
+    try:
+        # Test database connection
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        
+        # Test if auth tables exist
+        user_count = User.objects.count()
+        
+        return JsonResponse({
+            'status': 'healthy', 
+            'database': 'connected',
+            'users_count': user_count,
+            'debug': DEBUG
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'database': str(e)})
 
 def worker_dashboard(request):
     shops = Shop.objects.all()
