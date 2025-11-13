@@ -76,8 +76,8 @@ DATABASES = {
     }
 }
 
-# Use PostgreSQL in production
-if not DEBUG:
+# Use PostgreSQL if DATABASE_URL is available, otherwise use SQLite
+if 'DATABASE_URL' in os.environ:
     DATABASES['default'] = dj_database_url.config(
         default=os.environ.get('DATABASE_URL'),
         conn_max_age=600,
@@ -125,7 +125,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Only add static directory if it exists
+static_dirs = []
+static_path = os.path.join(BASE_DIR, 'static')
+if os.path.exists(static_path):
+    static_dirs.append(static_path)
+STATICFILES_DIRS = static_dirs
 
 # Whitenoise configuration for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
