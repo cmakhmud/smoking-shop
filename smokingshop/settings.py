@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 import dj_database_url
@@ -130,8 +129,13 @@ if os.path.exists(static_path):
     static_dirs.append(static_path)
 STATICFILES_DIRS = static_dirs
 
-# Whitenoise configuration for static files
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# FIX: Use simpler static storage to prevent admin errors
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+# Create staticfiles directory automatically
+staticfiles_dir = os.path.join(BASE_DIR, 'staticfiles')
+if not os.path.exists(staticfiles_dir):
+    os.makedirs(staticfiles_dir)
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
