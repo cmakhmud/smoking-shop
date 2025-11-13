@@ -1,0 +1,12 @@
+{
+  "name": "smoking-shop-management",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Build complete'",
+    "dev": "python3 manage.py runserver 0.0.0.0:8000"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
