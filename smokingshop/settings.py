@@ -19,7 +19,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-+dke2rt*0j=f+3h=$0j8+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']  # For now, we'll update this after deployment
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'smoking-shop-production.up.railway.app,localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -143,8 +143,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # FIX: Let Railway handle SSL redirects to prevent loops
+    SECURE_SSL_REDIRECT = False  # Changed from True to False
+    
+    # Configure proxy settings for Railway
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    # Add CSRF trusted origins for Railway
+    CSRF_TRUSTED_ORIGINS = [
+        'https://smoking-shop-production.up.railway.app',
+        'https://*.railway.app',
+    ]
