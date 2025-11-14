@@ -30,13 +30,13 @@ class Good(models.Model):
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)]
-    )  # Selling price
+    )
     buy_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         validators=[MinValueValidator(0)],
         default=0
-    )  # Purchase cost
+    )
     stock_count = models.IntegerField(
         default=0,
         validators=[MinValueValidator(0)]
@@ -54,7 +54,9 @@ class Good(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} - {self.shop.name}"
+        # Safe __str__ method that won't crash
+        shop_name = self.shop.name if self.shop else "No Shop"
+        return f"{self.name} - {shop_name}"
 
     class Meta:
         ordering = ['name']
