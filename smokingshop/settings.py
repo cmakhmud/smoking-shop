@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import dj_database_url
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -160,3 +161,24 @@ if not DEBUG:
         'https://smoking-shop-production.up.railway.app',
         'https://*.railway.app',
     ]
+
+# Debug logging - MOVED TO BOTTOM so DEBUG is defined
+if not DEBUG:
+    # Show detailed errors even in production
+    DEBUG_PROPAGATE_EXCEPTIONS = True
+    
+    # Log all errors to console
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'stream': sys.stdout,
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    }
