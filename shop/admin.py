@@ -14,11 +14,14 @@ class WorkerInline(admin.StackedInline):
 class CustomUserAdmin(UserAdmin):
     inlines = (WorkerInline,)
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'get_shop', 'is_active')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'worker__shop')
+    list_filter = ('is_staff', 'is_superuser', 'is_active')  # REMOVED 'worker__shop'
     
     def get_shop(self, obj):
-        if hasattr(obj, 'worker'):
-            return obj.worker.shop.name
+        try:
+            if hasattr(obj, 'worker') and obj.worker.shop:
+                return obj.worker.shop.name
+        except:
+            pass
         return "Admin"
     get_shop.short_description = 'Mağaza'
 
