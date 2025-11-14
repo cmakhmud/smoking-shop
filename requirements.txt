@@ -3,7 +3,4 @@ gunicorn
 whitenoise[brotli]
 psycopg2-binary
 dj-database-url
-<<<<<<< HEAD
 django-cors-headers
-=======
->>>>>>> bb043716c35a428f6c006a160d0ca921ec0980b6
