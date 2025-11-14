@@ -1,5 +1,5 @@
 Django>=4.2,<4.3
 gunicorn
-whitenoise
+whitenoise[brotli]
 psycopg2-binary
-dj-database-url"" 
+dj-database-url
