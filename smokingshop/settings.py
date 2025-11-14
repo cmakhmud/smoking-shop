@@ -16,7 +16,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-+dke2rt*0j=f+3h=$0j8+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'smoking-shop-production.up.railway.app,localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [
+    'smoking-shop-production.up.railway.app',
+    '.railway.app',
+    '.up.railway.app',
+    'localhost',
+    '127.0.0.1',
+]
 
 
 # Application definition
@@ -28,12 +34,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'shop',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add this for static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -160,9 +168,22 @@ if not DEBUG:
     CSRF_TRUSTED_ORIGINS = [
         'https://smoking-shop-production.up.railway.app',
         'https://*.railway.app',
+        'https://*.up.railway.app',
     ]
+    
+    # CORS settings for CSRF fix
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_CREDENTIALS = True
+    CORS_ALLOWED_ORIGINS = [
+        "https://smoking-shop-production.up.railway.app",
+        "https://*.railway.app",
+        "https://*.up.railway.app",
+    ]
+    
+    # Temporary CSRF fix
+    CSRF_USE_SESSIONS = False
 
-# Debug logging - MOVED TO BOTTOM so DEBUG is defined
+# Debug logging
 if not DEBUG:
     # Show detailed errors even in production
     DEBUG_PROPAGATE_EXCEPTIONS = True
