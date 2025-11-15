@@ -13,6 +13,7 @@ urlpatterns = [
     path('', lambda request: redirect('shop:login'), name='root_redirect'),
     
     path('worker/', views.worker_dashboard, name='worker'),
+    path('api/search/', views.search_goods, name='search_goods'),
     path('api/scan/', views.scan_barcode, name='scan_barcode'),
     path('api/sale/', views.process_sale, name='process_sale'),
     path('finance/', views.finance_dashboard, name='finance'),
