@@ -161,21 +161,25 @@ def finance_dashboard(request):
     if barcode:
         sales = sales.filter(good__barcode__icontains=barcode)
 
-    # Use Azerbaijan timezone
-    baku_tz = pytz.timezone('Asia/Baku')
-    now_baku = timezone.now().astimezone(baku_tz)
+    # Use Django's timezone system instead of pytz
+    now = timezone.now()
+    
+    # Convert to Azerbaijan time (UTC+4) by adjusting hours
+    # This is a simple workaround without pytz
+    azerbaijan_offset = timedelta(hours=4)
+    now_baku = now + azerbaijan_offset
     today_baku = now_baku.date()
 
-    # Date filter - convert to Baku timezone
+    # Date filter
     if date_filter == 'today':
-        # Filter by today's date in Baku timezone
+        # Filter by today's date in Azerbaijan time
         sales = sales.filter(
             timestamp__date=today_baku
         )
     elif date_filter == 'week':
-        start_of_week_baku = now_baku - timedelta(days=now_baku.weekday())
-        start_of_week_baku = start_of_week_baku.replace(hour=0, minute=0, second=0, microsecond=0)
-        sales = sales.filter(timestamp__gte=start_of_week_baku)
+        start_of_week = now_baku - timedelta(days=now_baku.weekday())
+        start_of_week_utc = start_of_week - azerbaijan_offset
+        sales = sales.filter(timestamp__gte=start_of_week_utc)
     elif date_filter == 'month':
         sales = sales.filter(
             timestamp__year=now_baku.year,
@@ -187,26 +191,21 @@ def finance_dashboard(request):
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
             
             if not start_time and not end_time:
-                # Filter by date range in Baku timezone
-                sales = sales.filter(
-                    timestamp__date__gte=start_date_obj,
-                    timestamp__date__lte=end_date_obj
-                )
+                sales = sales.filter(timestamp__date__gte=start_date_obj, timestamp__date__lte=end_date_obj)
             else:
-                # Create timezone-aware datetime objects for Baku timezone
                 if start_time:
-                    start_dt_naive = datetime.combine(start_date_obj, datetime.strptime(start_time, '%H:%M').time())
+                    start_dt = datetime.combine(start_date_obj, datetime.strptime(start_time, '%H:%M').time())
                 else:
-                    start_dt_naive = datetime.combine(start_date_obj, dt_time.min)
+                    start_dt = datetime.combine(start_date_obj, dt_time.min)
                 
                 if end_time:
-                    end_dt_naive = datetime.combine(end_date_obj, datetime.strptime(end_time, '%H:%M').time())
+                    end_dt = datetime.combine(end_date_obj, datetime.strptime(end_time, '%H:%M').time())
                 else:
-                    end_dt_naive = datetime.combine(end_date_obj, dt_time.max)
+                    end_dt = datetime.combine(end_date_obj, dt_time.max)
                 
-                # Localize to Baku timezone
-                start_dt = baku_tz.localize(start_dt_naive)
-                end_dt = baku_tz.localize(end_dt_naive)
+                # Make datetime objects timezone-aware
+                start_dt = timezone.make_aware(start_dt)
+                end_dt = timezone.make_aware(end_dt)
                 
                 sales = sales.filter(timestamp__gte=start_dt, timestamp__lte=end_dt)
             
@@ -214,34 +213,40 @@ def finance_dashboard(request):
             import traceback
             traceback.print_exc()
 
-    # Worker shift filtering with proper timezone handling
+    # Worker shift filtering with timezone adjustment
     if worker_shift and not (request.user.is_staff or request.user.is_superuser):
         if worker_shift == '09:00-21:00':
-            # Morning shift: 09:00 to 21:00 in Baku time
-            # We need to extract the time in Baku timezone
-            from django.db.models.functions import ExtractHour, ExtractMinute
+            # Morning shift: 09:00 to 21:00 in Azerbaijan time
+            # Adjust for UTC timezone difference
+            start_hour_utc = (9 - 4) % 24  # 9 AM Baku = 5 AM UTC
+            end_hour_utc = (21 - 4) % 24   # 9 PM Baku = 5 PM UTC
             
-            # Method 1: Using time extraction with timezone
-            sales = sales.annotate(
-                baku_hour=ExtractHour('timestamp', tzinfo=baku_tz),
-                baku_minute=ExtractMinute('timestamp', tzinfo=baku_tz)
-            ).filter(
-                baku_hour__gte=9,
-                baku_hour__lte=20  # 21:00 becomes hour < 21 or hour=20 with any minute
-            )
-            
+            if start_hour_utc <= end_hour_utc:
+                # Normal case: both hours in same day
+                sales = sales.filter(
+                    timestamp__time__gte=dt_time(start_hour_utc, 0),
+                    timestamp__time__lte=dt_time(end_hour_utc, 0)
+                )
+            else:
+                # Overnight case in UTC
+                sales = sales.filter(
+                    Q(timestamp__time__gte=dt_time(start_hour_utc, 0)) | 
+                    Q(timestamp__time__lte=dt_time(end_hour_utc, 0))
+                )
+                
         elif worker_shift == '21:00-09:00':
-            # Night shift: 21:00 to 09:00 (next day) in Baku time
-            # This covers overnight shifts
-            from django.db.models.functions import ExtractHour
+            # Night shift: 21:00 to 09:00 in Azerbaijan time
+            # Adjust for UTC timezone difference
+            start_hour_utc = (21 - 4) % 24  # 9 PM Baku = 5 PM UTC
+            end_hour_utc = (9 - 4) % 24     # 9 AM Baku = 5 AM UTC
             
-            sales = sales.annotate(
-                baku_hour=ExtractHour('timestamp', tzinfo=baku_tz)
-            ).filter(
-                Q(baku_hour__gte=21) | Q(baku_hour__lt=9)
+            # This is an overnight shift in both timezones
+            sales = sales.filter(
+                Q(timestamp__time__gte=dt_time(start_hour_utc, 0)) | 
+                Q(timestamp__time__lte=dt_time(end_hour_utc, 0))
             )
 
-    # Calculate statistics using the filtered sales
+    # Calculate total revenue, items sold, number of sales, average sale
     total_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
     items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
     num_sales = sales.count()
@@ -254,13 +259,13 @@ def finance_dashboard(request):
     )
     total_profit = sales.aggregate(total=Sum(profit_expr))['total'] or 0
 
-    # Today / week / month revenue calculations in Baku timezone
+    # Today / week / month revenue with Azerbaijan time adjustment
     today_sales = Sale.objects.filter(timestamp__date=today_baku)
     today_revenue = today_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
 
     start_of_week_baku = now_baku - timedelta(days=now_baku.weekday())
-    start_of_week_baku = start_of_week_baku.replace(hour=0, minute=0, second=0, microsecond=0)
-    week_sales = Sale.objects.filter(timestamp__gte=start_of_week_baku)
+    start_of_week_utc = start_of_week_baku - azerbaijan_offset
+    week_sales = Sale.objects.filter(timestamp__gte=start_of_week_utc)
     week_revenue = week_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
 
     month_sales = Sale.objects.filter(
@@ -292,7 +297,7 @@ def finance_dashboard(request):
             'end_time': end_time,
             'worker_shift': worker_shift,
         },
-        'current_baku_time': now_baku.strftime('%Y-%m-%d %H:%M:%S %Z%z')  # For debugging
+        'current_baku_time': now_baku.strftime('%Y-%m-%d %H:%M:%S')  # For debugging
     }
 
     return render(request, 'shop/finance.html', context)
