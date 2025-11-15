@@ -161,41 +161,52 @@ def finance_dashboard(request):
     if barcode:
         sales = sales.filter(good__barcode__icontains=barcode)
 
-    now = timezone.now()
+    # Use Azerbaijan timezone
+    baku_tz = pytz.timezone('Asia/Baku')
+    now_baku = timezone.now().astimezone(baku_tz)
+    today_baku = now_baku.date()
 
-    # Date filter
+    # Date filter - convert to Baku timezone
     if date_filter == 'today':
-        sales = sales.filter(timestamp__date=now.date())
+        # Filter by today's date in Baku timezone
+        sales = sales.filter(
+            timestamp__date=today_baku
+        )
     elif date_filter == 'week':
-        start_of_week = now - timedelta(days=now.weekday())
-        sales = sales.filter(timestamp__gte=start_of_week)
+        start_of_week_baku = now_baku - timedelta(days=now_baku.weekday())
+        start_of_week_baku = start_of_week_baku.replace(hour=0, minute=0, second=0, microsecond=0)
+        sales = sales.filter(timestamp__gte=start_of_week_baku)
     elif date_filter == 'month':
-        sales = sales.filter(timestamp__year=now.year, timestamp__month=now.month)
+        sales = sales.filter(
+            timestamp__year=now_baku.year,
+            timestamp__month=now_baku.month
+        )
     elif date_filter == 'custom' and start_date and end_date:
         try:
-            available_dates = sales.dates('timestamp', 'day')
-
             start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
             end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
             
-            # If only dates are provided (no times), filter by date range
             if not start_time and not end_time:
-                sales = sales.filter(timestamp__date__gte=start_date_obj, timestamp__date__lte=end_date_obj)
+                # Filter by date range in Baku timezone
+                sales = sales.filter(
+                    timestamp__date__gte=start_date_obj,
+                    timestamp__date__lte=end_date_obj
+                )
             else:
-                # If times are provided, create datetime objects for precise filtering
+                # Create timezone-aware datetime objects for Baku timezone
                 if start_time:
-                    start_dt = datetime.combine(start_date_obj, datetime.strptime(start_time, '%H:%M').time())
+                    start_dt_naive = datetime.combine(start_date_obj, datetime.strptime(start_time, '%H:%M').time())
                 else:
-                    start_dt = datetime.combine(start_date_obj, dt_time.min)
+                    start_dt_naive = datetime.combine(start_date_obj, dt_time.min)
                 
                 if end_time:
-                    end_dt = datetime.combine(end_date_obj, datetime.strptime(end_time, '%H:%M').time())
+                    end_dt_naive = datetime.combine(end_date_obj, datetime.strptime(end_time, '%H:%M').time())
                 else:
-                    end_dt = datetime.combine(end_date_obj, dt_time.max)
+                    end_dt_naive = datetime.combine(end_date_obj, dt_time.max)
                 
-                # Make datetime objects timezone-aware
-                start_dt = timezone.make_aware(start_dt)
-                end_dt = timezone.make_aware(end_dt)
+                # Localize to Baku timezone
+                start_dt = baku_tz.localize(start_dt_naive)
+                end_dt = baku_tz.localize(end_dt_naive)
                 
                 sales = sales.filter(timestamp__gte=start_dt, timestamp__lte=end_dt)
             
@@ -203,23 +214,34 @@ def finance_dashboard(request):
             import traceback
             traceback.print_exc()
 
-    # Worker shift filtering (only for non-admin users)
+    # Worker shift filtering with proper timezone handling
     if worker_shift and not (request.user.is_staff or request.user.is_superuser):
         if worker_shift == '09:00-21:00':
-            # Morning shift: 09:00 to 21:00
-            sales = sales.filter(
-                timestamp__time__gte=dt_time(9, 0),
-                timestamp__time__lte=dt_time(21, 0)
+            # Morning shift: 09:00 to 21:00 in Baku time
+            # We need to extract the time in Baku timezone
+            from django.db.models.functions import ExtractHour, ExtractMinute
+            
+            # Method 1: Using time extraction with timezone
+            sales = sales.annotate(
+                baku_hour=ExtractHour('timestamp', tzinfo=baku_tz),
+                baku_minute=ExtractMinute('timestamp', tzinfo=baku_tz)
+            ).filter(
+                baku_hour__gte=9,
+                baku_hour__lte=20  # 21:00 becomes hour < 21 or hour=20 with any minute
             )
+            
         elif worker_shift == '21:00-09:00':
-            # Night shift: 21:00 to 09:00 (next day)
-            # This requires complex query for overnight shifts
-            sales = sales.filter(
-                Q(timestamp__time__gte=dt_time(21, 0)) | 
-                Q(timestamp__time__lte=dt_time(9, 0))
+            # Night shift: 21:00 to 09:00 (next day) in Baku time
+            # This covers overnight shifts
+            from django.db.models.functions import ExtractHour
+            
+            sales = sales.annotate(
+                baku_hour=ExtractHour('timestamp', tzinfo=baku_tz)
+            ).filter(
+                Q(baku_hour__gte=21) | Q(baku_hour__lt=9)
             )
 
-    # Calculate total revenue, items sold, number of sales, average sale
+    # Calculate statistics using the filtered sales
     total_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
     items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
     num_sales = sales.count()
@@ -232,15 +254,19 @@ def finance_dashboard(request):
     )
     total_profit = sales.aggregate(total=Sum(profit_expr))['total'] or 0
 
-    # Today / week / month revenue
-    today_sales = Sale.objects.filter(timestamp__date=now.date())
+    # Today / week / month revenue calculations in Baku timezone
+    today_sales = Sale.objects.filter(timestamp__date=today_baku)
     today_revenue = today_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
 
-    start_of_week = now - timedelta(days=now.weekday())
-    week_sales = Sale.objects.filter(timestamp__gte=start_of_week)
+    start_of_week_baku = now_baku - timedelta(days=now_baku.weekday())
+    start_of_week_baku = start_of_week_baku.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_sales = Sale.objects.filter(timestamp__gte=start_of_week_baku)
     week_revenue = week_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
 
-    month_sales = Sale.objects.filter(timestamp__year=now.year, timestamp__month=now.month)
+    month_sales = Sale.objects.filter(
+        timestamp__year=now_baku.year,
+        timestamp__month=now_baku.month
+    )
     month_revenue = month_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
 
     context = {
@@ -265,7 +291,8 @@ def finance_dashboard(request):
             'start_time': start_time,
             'end_time': end_time,
             'worker_shift': worker_shift,
-        }
+        },
+        'current_baku_time': now_baku.strftime('%Y-%m-%d %H:%M:%S %Z%z')  # For debugging
     }
 
     return render(request, 'shop/finance.html', context)
