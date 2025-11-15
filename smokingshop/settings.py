@@ -118,11 +118,18 @@ LOGOUT_REDIRECT_URL = '/login/'
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
-
 USE_I18N = True
 
 USE_TZ = True
+
+# Timezone settings
+TIME_ZONE = 'Asia/Baku'
+USE_TZ = True
+
+# Use environment variable if available
+import os
+if 'TIME_ZONE' in os.environ:
+    TIME_ZONE = os.environ['TIME_ZONE']
 
 
 # Static files (CSS, JavaScript, Images)
