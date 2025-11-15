@@ -18,6 +18,36 @@ logger = logging.getLogger(__name__)
 
 from .models import Shop, Category, Good, Sale
 
+def search_goods(request):
+    query = request.GET.get('q', '').strip()
+    shop_id = request.GET.get('shop_id')
+    
+    if not query or not shop_id:
+        return JsonResponse({'results': []})
+    
+    try:
+        goods = Good.objects.filter(
+            Q(name__icontains=query) | Q(barcode__icontains=query),
+            shop_id=shop_id,
+            stock_count__gt=0
+        )[:10]  # Limit to 10 results
+        
+        results = []
+        for good in goods:
+            results.append({
+                'id': good.id,
+                'name': good.name,
+                'price': float(good.price),
+                'barcode': good.barcode,
+                'category': good.category.name if good.category else '',
+                'stock_count': good.stock_count
+            })
+        
+        return JsonResponse({'results': results})
+        
+    except Exception as e:
+        return JsonResponse({'error': 'Axtarış xətası'}, status=500)
+
 def health_check(request):
     try:
         # Test database connection
