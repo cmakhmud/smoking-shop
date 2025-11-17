@@ -18,6 +18,11 @@ urlpatterns = [
     path('api/sale/', views.process_sale, name='process_sale'),
     path('finance/', views.finance_dashboard, name='finance'),
     
+    path('create-debt/', views.create_debt_page, name='create_debt_page'),
+    path('debts/', views.debt_list, name='debt_list'),
+    path('api/debt/create/', views.create_debt, name='create_debt'),
+    path('api/debt/pay/', views.pay_debt, name='pay_debt'),
+    path('api/debt/cancel/', views.cancel_debt, name='cancel_debt'),
     # Add authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='shop/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='shop:login'), name='logout'),

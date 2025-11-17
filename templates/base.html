@@ -23,10 +23,14 @@
                         {% if user.is_staff or user.is_superuser %}
                             <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">İşçi Paneli</a>
                             <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Maliyyə Paneli</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borclar</a>
                             <a href="/admin/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Admin Paneli</a>
                         {% else %}
                             <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">İşçi Paneli</a>
                             <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Maliyyə Paneli</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borclar</a>
                         {% endif %}
                         <span class="text-gray-700 text-sm">{{ user.username }}</span>
                         

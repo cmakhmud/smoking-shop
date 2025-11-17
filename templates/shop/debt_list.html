@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}Borc Siyahısı - Siqaret Mağazası{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Borc Siyahısı</h2>
+        <a href="/create-debt/" class="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6 rounded-md transition duration-200">
+            Yeni Borc Yarat
+        </a>
+    </div>
+
+    <!-- Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Ümumi Borc</p>
+            <p class="text-2xl font-bold text-gray-800">AZN {{ total_debts|floatformat:2 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Ödənilən</p>
+            <p class="text-2xl font-bold text-green-600">AZN {{ total_paid|floatformat:2 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Qalan</p>
+            <p class="text-2xl font-bold text-orange-600">AZN {{ total_remaining|floatformat:2 }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Gecikmiş</p>
+            <p class="text-2xl font-bold text-red-600">AZN {{ total_overdue|floatformat:2 }}</p>
+            <p class="text-xs text-gray-500">{{ overdue_count }} borc</p>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Filtrlər</h3>
+        <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mağaza</label>
+                <select name="shop" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">Bütün Mağazalar</option>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}" {% if filters.shop == shop.id|stringformat:"s" %}selected{% endif %}>
+                            {{ shop.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                    <option value="">Bütün Statuslar</option>
+                    <option value="pending" {% if filters.status == 'pending' %}selected{% endif %}>Gözləyir</option>
+                    <option value="paid" {% if filters.status == 'paid' %}selected{% endif %}>Ödənilib</option>
+                    <option value="cancelled" {% if filters.status == 'cancelled' %}selected{% endif %}>Ləğv edilib</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md">
+                    Filtrlə
+                </button>
+                <a href="/debts/" class="ml-3 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-md">
+                    Sıfırla
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Debt List -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Müştəri</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mağaza</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ümumi</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ödənilən</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qalan</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Son Tarix</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Əməliyyat</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for debt in debts %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div>
+                                <div class="font-semibold text-gray-900">{{ debt.customer_name }}</div>
+                                {% if debt.customer_phone %}
+                                <div class="text-sm text-gray-500">{{ debt.customer_phone }}</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ debt.shop.name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            {{ debt.total_amount|floatformat:2 }} AZN
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600">
+                            {{ debt.paid_amount|floatformat:2 }} AZN
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-orange-600">
+                            {{ debt.remaining_amount|floatformat:2 }} AZN
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ debt.due_date }}
+                            {% if debt.due_date < today and debt.status == 'pending' %}
+                            <span class="ml-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Gecikmiş</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if debt.status == 'pending' %}
+                            <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Gözləyir</span>
+                            {% elif debt.status == 'paid' %}
+                            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">Ödənilib</span>
+                            {% else %}
+                            <span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">Ləğv edilib</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if debt.status == 'pending' %}
+                            <div class="flex space-x-2">
+                                <button onclick="openPaymentModal({{ debt.id }}, '{{ debt.customer_name }}', {{ debt.remaining_amount }})" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs">
+                                    Ödəniş
+                                </button>
+                                <button onclick="cancelDebt({{ debt.id }})" 
+                                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs">
+                                    Ləğv et
+                                </button>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-6 py-8 text-center text-gray-500">
+                            Heç bir borc tapılmadı
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div id="payment-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <div class="flex items-center justify-center min-h-screen">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold">Ödəniş Qəbul Et</h3>
+                <p class="text-sm text-gray-600 mt-1">Müştəri: <span id="modal-customer-name"></span></p>
+            </div>
+            <div class="p-6">
+                <form id="payment-form">
+                    <input type="hidden" id="debt-id">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Ödəniş Məbləği (AZN)</label>
+                        <input type="number" id="payment-amount" step="0.01" min="0.01" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500" required>
+                        <p class="text-xs text-gray-500 mt-1">Qalan məbləğ: <span id="remaining-amount">0.00</span> AZN</p>
+                    </div>
+                </form>
+            </div>
+            <div class="px-6 py-4 border-t bg-gray-50 flex justify-end space-x-3">
+                <button onclick="closePaymentModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-md border border-gray-300">
+                    Ləğv et
+                </button>
+                <button onclick="submitPayment()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md">
+                    Təsdiqlə
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openPaymentModal(debtId, customerName, remainingAmount) {
+    document.getElementById('debt-id').value = debtId;
+    document.getElementById('modal-customer-name').textContent = customerName;
+    document.getElementById('remaining-amount').textContent = remainingAmount.toFixed(2);
+    document.getElementById('payment-amount').max = remainingAmount;
+    document.getElementById('payment-amount').value = remainingAmount.toFixed(2);
+    document.getElementById('payment-modal').classList.remove('hidden');
+}
+
+function closePaymentModal() {
+    document.getElementById('payment-modal').classList.add('hidden');
+}
+
+async function submitPayment() {
+    const amount = parseFloat(document.getElementById('payment-amount').value);
+    const debtId = document.getElementById('debt-id').value;
+    
+    if (!amount || amount <= 0) {
+        alert('Düzgün məbləğ daxil edin');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/debt/pay/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                debt_id: debtId,
+                amount: amount
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message);
+            closePaymentModal();
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Xəta baş verdi. Yenidən cəhd edin.');
+    }
+}
+
+async function cancelDebt(debtId) {
+    if (!confirm('Bu borcu ləğv etmək istədiyinizə əminsiniz? Stok geri qaytarılacaq.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/debt/cancel/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                debt_id: debtId
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error);
+        }
+    } catch (error) {
+        alert('Xəta baş verdi. Yenidən cəhd edin.');
+    }
+}
+
+// Close modal when clicking outside
+document.getElementById('payment-modal').addEventListener('click', function(e) {
+    if (e.target.id === 'payment-modal') {
+        closePaymentModal();
+    }
+});
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

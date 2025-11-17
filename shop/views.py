@@ -9,11 +9,12 @@ from django.utils import timezone
 from datetime import datetime, time as dt_time ,timedelta
 import logging
 import pytz
+from django.contrib.auth.decorators import login_required
 # Add these missing imports
 from django.db import connection
 from django.contrib.auth.models import User
 from django.conf import settings
-from .models import Shop, Category, Good, Sale, Expense
+from .models import Shop, Category, Good, Sale, Expense ,Debt, DebtItem
 
 logger = logging.getLogger(__name__)
 
@@ -82,22 +83,24 @@ def scan_barcode(request):
         return JsonResponse({'error': 'Barcode and shop are required'}, status=400)
 
     try:
-        good = Good.objects.select_related('category', 'shop').get(
+        # Use only() to select specific fields and reduce data transfer
+        good = Good.objects.select_related('category').only(
+            'id', 'name', 'price', 'barcode', 'stock_count', 'category__name'
+        ).get(
             barcode=barcode,
-            shop_id=shop_id
+            shop_id=shop_id,
+            stock_count__gt=0  # Combine stock check in query
         )
-
-        if good.stock_count <= 0:
-            return JsonResponse({'error': 'Out of stock'}, status=400)
 
         return JsonResponse({
             'id': good.id,
             'name': good.name,
-            'price': str(good.price),
+            'price': float(good.price),  # Convert to float for JSON
             'category': good.category.name,
             'stock_count': good.stock_count,
             'barcode': good.barcode
         })
+        
     except Good.DoesNotExist:
         return JsonResponse({'error': 'Good not found with this barcode'}, status=404)
 
@@ -310,3 +313,195 @@ def finance_dashboard(request):
     }
 
     return render(request, 'shop/finance.html', context)
+
+@login_required
+def create_debt_page(request):
+    shops = Shop.objects.all()
+    return render(request, 'shop/create_debt.html', {'shops': shops})
+
+@login_required
+def debt_list(request):
+    debts = Debt.objects.select_related('shop').all()
+    
+    # Filters
+    shop_id = request.GET.get('shop')
+    status = request.GET.get('status')
+    
+    if shop_id:
+        debts = debts.filter(shop_id=shop_id)
+    if status:
+        debts = debts.filter(status=status)
+
+    # Statistics
+    total_debts = debts.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
+    total_paid = debts.aggregate(total=Sum('paid_amount'))['total'] or Decimal('0.00')
+    total_remaining = debts.aggregate(total=Sum('remaining_amount'))['total'] or Decimal('0.00')
+    
+    today = timezone.now().date()
+    overdue_debts = debts.filter(due_date__lt=today, status='pending')
+    total_overdue = overdue_debts.aggregate(total=Sum('remaining_amount'))['total'] or Decimal('0.00')
+
+    context = {
+        'debts': debts,
+        'shops': Shop.objects.all(),
+        'today': today,
+        'total_debts': total_debts,
+        'total_paid': total_paid,
+        'total_remaining': total_remaining,
+        'total_overdue': total_overdue,
+        'overdue_count': overdue_debts.count(),
+        'filters': {
+            'shop': shop_id,
+            'status': status,
+        }
+    }
+    
+    return render(request, 'shop/debt_list.html', context)
+
+@login_required
+@require_http_methods(["POST"])
+def create_debt(request):
+    data = json.loads(request.body)
+    
+    customer_name = data.get('customer_name')
+    customer_phone = data.get('customer_phone', '')
+    shop_id = data.get('shop_id')
+    items = data.get('items', [])
+    due_date = data.get('due_date')
+    description = data.get('description', '')
+
+    if not customer_name or not shop_id or not items or not due_date:
+        return JsonResponse({'error': 'Bütün məlumatları doldurun'}, status=400)
+
+    try:
+        shop = Shop.objects.get(id=shop_id)
+        due_date_obj = datetime.strptime(due_date, '%Y-%m-%d').date()
+        
+        # Calculate total amount and check stock
+        total_amount = Decimal('0.00')
+        debt_items_data = []
+        
+        # First, check all items have sufficient stock
+        for item in items:
+            good = Good.objects.get(id=item['id'], shop=shop)
+            if good.stock_count < item['quantity']:
+                return JsonResponse({
+                    'error': f'{good.name} üçün kifayət qədər stok yoxdur. Stok: {good.stock_count}, Tələb olunan: {item["quantity"]}'
+                }, status=400)
+            
+            item_total = good.price * item['quantity']
+            total_amount += item_total
+            
+            debt_items_data.append({
+                'good': good,
+                'quantity': item['quantity'],
+                'unit_price': good.price,
+                'total_price': item_total
+            })
+
+        # Create debt
+        debt = Debt.objects.create(
+            customer_name=customer_name,
+            customer_phone=customer_phone,
+            shop=shop,
+            total_amount=total_amount,
+            remaining_amount=total_amount,
+            due_date=due_date_obj,
+            description=description,
+            created_by=request.user
+        )
+
+        # Create debt items and reduce stock
+        for item_data in debt_items_data:
+            DebtItem.objects.create(
+                debt=debt,
+                good=item_data['good'],
+                quantity=item_data['quantity'],
+                unit_price=item_data['unit_price'],
+                total_price=item_data['total_price']
+            )
+            
+            # Reduce stock - IMPORTANT: Stock decreases when debt is created
+            good = item_data['good']
+            good.stock_count -= item_data['quantity']
+            good.save()
+
+        return JsonResponse({
+            'success': True,
+            'debt_id': debt.id,
+            'message': f'Borc uğurla yaradıldı. Ümumi məbləğ: {total_amount} AZN. Stok yeniləndi.'
+        })
+
+    except Good.DoesNotExist:
+        return JsonResponse({'error': 'Məhsul tapılmadı'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def pay_debt(request):
+    data = json.loads(request.body)
+    debt_id = data.get('debt_id')
+    amount = Decimal(data.get('amount', '0'))
+
+    if not debt_id or amount <= 0:
+        return JsonResponse({'error': 'Düzgün məbləğ daxil edin'}, status=400)
+
+    try:
+        debt = Debt.objects.get(id=debt_id)
+        
+        if debt.status != 'pending':
+            return JsonResponse({'error': 'Bu borc artıq ödənilib və ya ləğv edilib'}, status=400)
+
+        if amount > debt.remaining_amount:
+            return JsonResponse({'error': f'Ödəniş məbləği qalan məbləğdən çox ola bilməz. Qalan: {debt.remaining_amount} AZN'}, status=400)
+
+        debt.paid_amount += amount
+        debt.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'{amount} AZN ödəniş qəbul edildi. Qalan məbləğ: {debt.remaining_amount} AZN',
+            'remaining_amount': float(debt.remaining_amount)
+        })
+
+    except Debt.DoesNotExist:
+        return JsonResponse({'error': 'Borc tapılmadı'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def cancel_debt(request):
+    data = json.loads(request.body)
+    debt_id = data.get('debt_id')
+
+    if not debt_id:
+        return JsonResponse({'error': 'Borc ID tələb olunur'}, status=400)
+
+    try:
+        debt = Debt.objects.get(id=debt_id)
+        
+        if debt.status != 'pending':
+            return JsonResponse({'error': 'Yalnız gözləyən borclar ləğv edilə bilər'}, status=400)
+
+        # Restore stock for all items in this debt
+        debt_items = DebtItem.objects.filter(debt=debt)
+        for debt_item in debt_items:
+            good = debt_item.good
+            good.stock_count += debt_item.quantity
+            good.save()
+
+        # Update debt status
+        debt.status = 'cancelled'
+        debt.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Borc ləğv edildi və stok geri qaytarıldı'
+        })
+
+    except Debt.DoesNotExist:
+        return JsonResponse({'error': 'Borc tapılmadı'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

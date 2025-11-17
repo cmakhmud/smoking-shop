@@ -105,3 +105,52 @@ class Expense(models.Model):
 
     class Meta:
         ordering = ['-expense_date', '-created_at']
+
+class Debt(models.Model):
+    DEBT_STATUS = [
+        ('pending', 'Gözləyir'),
+        ('paid', 'Ödənilib'),
+        ('cancelled', 'Ləğv edilib'),
+    ]
+
+    customer_name = models.CharField(max_length=200, verbose_name="Müştəri adı")
+    customer_phone = models.CharField(max_length=20, blank=True, verbose_name="Telefon")
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, verbose_name="Mağaza")
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Ümumi məbləğ")
+    paid_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Ödənilən məbləğ")
+    remaining_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Qalan məbləğ")
+    status = models.CharField(max_length=20, choices=DEBT_STATUS, default='pending', verbose_name="Status")
+    due_date = models.DateField(verbose_name="Son tarix")
+    description = models.TextField(blank=True, verbose_name="Qeyd")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Yaradan")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.remaining_amount = self.total_amount - self.paid_amount
+        if self.remaining_amount <= 0 and self.status == 'pending':
+            self.status = 'paid'
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.customer_name} - {self.total_amount} AZN"
+
+    class Meta:
+        verbose_name = "Borc"
+        verbose_name_plural = "Borclar"
+        ordering = ['-created_at']
+
+
+class DebtItem(models.Model):
+    debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name='items')
+    good = models.ForeignKey(Good, on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        self.total_price = self.unit_price * self.quantity
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.good.name} x {self.quantity}"
