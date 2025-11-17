@@ -1,0 +1,385 @@
+{% extends 'base.html' %}
+
+{% block title %}Maliyyə Paneli - Siqaret Mağazası{% endblock %}
+
+{% block content %}
+<div class="px-4 py-6">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">Maliyyə Paneli</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Bugünkü Satış</p>
+                    <p class="text-3xl font-bold text-gray-800">AZN {{ today_revenue|floatformat:2 }}</p>
+                </div>
+                <div class="bg-blue-100 rounded-full p-3">
+                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+
+<!-- Messages -->
+{% if messages %}
+<div class="mb-6">
+    {% for message in messages %}
+    <div class="{% if message.tags == 'success' %}bg-green-100 border-green-400 text-green-700{% else %}bg-red-100 border-red-400 text-red-700{% endif %} border px-4 py-3 rounded relative" role="alert">
+        <span class="block sm:inline">{{ message }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+       {% if user.is_superuser %}
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Bu Həftə</p>
+                    <p class="text-3xl font-bold text-gray-800">AZN{{ week_revenue|floatformat:2 }}</p>
+                </div>
+                <div class="bg-green-100 rounded-full p-3">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-600 mb-1">Bu Ay</p>
+                    <p class="text-3xl font-bold text-gray-800">AZN {{ month_revenue|floatformat:2 }}</p>
+                </div>
+                <div class="bg-yellow-100 rounded-full p-3">
+                    <svg class="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% if not user.is_superuser %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Əlavə Xərclər</h3>
+        <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mağaza</label>
+                <select name="expense_shop" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                    <option value="">Mağaza seçin</option>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}">{{ shop.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Məbləğ (AZN)</label>
+                <input
+                    type="number"
+                    name="expense_amount"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="0.00"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Açıqlama</label>
+                <input
+                    type="text"
+                    name="expense_description"
+                    placeholder="Xərcin təsviri"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded-md transition duration-200 w-full">
+                    Xərc Əlavə Et
+                </button>
+            </div>
+        </form>
+    </div>
+{% endif %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Filtrlər</h3>
+
+        <form method="GET" action="/finance/" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {% if user.is_superuser %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Mağaza</label>
+                <select name="shop" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                    <option value="">Bütün Mağazalar</option>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}" {% if filters.shop == shop.id|stringformat:"s" %}selected{% endif %}>
+                            {{ shop.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Kateqoriya</label>
+                <select name="category" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                    <option value="">Bütün Kateqoriyalar</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if filters.category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Barkod</label>
+                <input
+                    type="text"
+                    name="barcode"
+                    value="{{ filters.barcode|default:'' }}"
+                    placeholder="Barkod üzrə axtar"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+            </div>
+            {% endif %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tarix Aralığı</label>
+                <select name="date_filter" id="date-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                    <option value="today" {% if filters.date_filter == 'today' %}selected{% endif %}>Bugün</option>
+                    <option value="week" {% if filters.date_filter == 'week' %}selected{% endif %}>Bu Həftə</option>
+                    
+                    <option value="month" {% if filters.date_filter == 'month' %}selected{% endif %}>Bu Ay</option>
+                    <option value="custom" {% if filters.date_filter == 'custom' %}selected{% endif %}>Özəl Aralıq</option>
+                    
+                </select>
+            </div>
+           
+            <div id="custom-date-range" class="md:col-span-5 mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 {% if filters.date_filter != 'custom' %}hidden{% endif %}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Başlanğıc Tarix</label>
+                    <input
+                        type="date"
+                        name="start_date"
+                        value="{{ filters.start_date|default:'' }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Başlanğıc Saat</label>
+                    <input
+                        type="time"
+                        name="start_time"
+                        value="{{ filters.start_time|default:'' }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Son Tarix</label>
+                    <input
+                        type="date"
+                        name="end_date"
+                        value="{{ filters.end_date|default:'' }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Son Saat</label>
+                    <input
+                        type="time"
+                        name="end_time"
+                        value="{{ filters.end_time|default:'' }}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+            </div>
+            
+            
+            
+            <div class="flex items-end md:col-span-5">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition duration-200">
+                    Filtrləri Tətbiq Et
+                </button>
+                <a href="/finance/" class="ml-3 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded-md transition duration-200">
+                    Sıfırla
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Ümumi Satış</p>
+            <p class="text-2xl font-bold text-gray-800">AZN {{ total_revenue|floatformat:2 }}</p>
+        </div>
+    
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Satılan Məhsullar</p>
+            <p class="text-2xl font-bold text-gray-800">{{ items_sold }}</p>
+        </div>
+    
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <p class="text-sm text-gray-600 mb-1">Satışların Sayı</p>
+            <p class="text-2xl font-bold text-gray-800">{{ num_sales }}</p>
+        </div>
+    
+        <!-- For Admin: Show Profit and Net Profit -->
+        {% if user.is_superuser %}
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <p class="text-sm text-gray-600 mb-1">Ümumi Mənfəət</p>
+                <p class="text-2xl font-bold text-gray-800">AZN {{ total_profit|floatformat:2 }}</p>
+            </div>
+        
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <p class="text-sm text-gray-600 mb-1">Xərclər</p>
+                <p class="text-2xl font-bold text-red-600">AZN {{ total_expenses|floatformat:2 }}</p>
+            </div>
+            
+            <!-- Net Profit Card -->
+            <div class="md:col-span-5 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-md p-6 border border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Xalis Mənfəət</p>
+                        <p class="text-3xl font-bold {% if net_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            AZN {{ net_profit|floatformat:2 }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-1">(Mənfəət - Xərclər)</p>
+                    </div>
+                    <div class="bg-white rounded-full p-3">
+                        <svg class="w-8 h-8 {% if net_profit >= 0 %}text-green-600{% else %}text-red-600{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <!-- For Workers: Show Expenses -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <p class="text-sm text-gray-600 mb-1">Ümumi Xərclər</p>
+                <p class="text-2xl font-bold text-red-600">AZN {{ total_expenses|floatformat:2 }}</p>
+            </div>
+        {% endif %}
+    </div>
+    
+
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800">Son Satışlar</h3>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarix & Saat</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Məhsul</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kateqoriya</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mağaza</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Miqdar</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ümumi Qiymət</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% if sales %}
+                        {% for sale in sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ sale.timestamp|date:"Y-m-d H:i" }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ sale.good.name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ sale.good.category.name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {{ sale.shop.name }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ sale.quantity }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                    AZN {{ sale.total_price|floatformat:2 }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                Seçilmiş filtrlər üçün satış tapılmadı
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if sales.count > 50 %}
+            <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                <p class="text-sm text-gray-600">İlk 50 nəticə göstərilir. Nəticələri daraltmaq üçün filtrlərdən istifadə edin.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if user.is_superuser and expenses %}
+<div class="bg-white rounded-lg shadow-md overflow-hidden mt-6">
+    <div class="px-6 py-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-800">Xərc Detalları</h3>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarix</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mağaza</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Məbləğ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Açıqlama</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Əlavə edən</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for expense in expenses %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ expense.expense_date }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ expense.shop.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
+                            AZN {{ expense.amount|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">
+                            {{ expense.description|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {{ expense.created_by.username }}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+    
+</div>
+
+<script>
+    const dateFilter = document.getElementById('date-filter');
+    const customDateRange = document.getElementById('custom-date-range');
+
+    dateFilter.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+            customDateRange.classList.remove('hidden');
+        } else {
+            customDateRange.classList.add('hidden');
+        }
+    });
+</script>
+{% endblock %}
