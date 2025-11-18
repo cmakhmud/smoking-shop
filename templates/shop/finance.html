@@ -214,6 +214,14 @@
         <div class="bg-white rounded-lg shadow-md p-6">
             <p class="text-sm text-gray-600 mb-1">Ümumi Satış</p>
             <p class="text-2xl font-bold text-gray-800">AZN {{ total_revenue|floatformat:2 }}</p>
+            <p class="text-xs text-gray-500 mt-1">
+                {% if sales_count and debts_count %}
+                    {% comment %} Calculate sales revenue and debt revenue {% endcomment %}
+                    {% with sales_revenue=sales_revenue|default:0 debts_revenue=debts_revenue|default:0 %}
+                        {{ sales_revenue|floatformat:2 }} AZN satış + {{ debts_revenue|floatformat:2 }} AZN borc
+                    {% endwith %}
+                {% endif %}
+            </p>
         </div>
     
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -222,8 +230,13 @@
         </div>
     
         <div class="bg-white rounded-lg shadow-md p-6">
-            <p class="text-sm text-gray-600 mb-1">Satışların Sayı</p>
+            <p class="text-sm text-gray-600 mb-1">Əməliyyatlar</p>
             <p class="text-2xl font-bold text-gray-800">{{ num_sales }}</p>
+            <p class="text-xs text-gray-500 mt-1">
+                {% if sales_count and debts_count %}
+                    {{ sales_count }} satış + {{ debts_count }} borc
+                {% endif %}
+            </p>
         </div>
     
         <!-- For Admin: Show Profit and Net Profit -->
@@ -285,18 +298,24 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% if sales %}
                         {% for sale in sales %}
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 {% if sale.is_debt %}bg-yellow-50{% endif %}">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ sale.timestamp|date:"Y-m-d H:i" }}
+                                    {% if sale.is_debt %}
+                                        <span class="ml-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Borc</span>
+                                    {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ sale.good.name }}
+                                    {{ sale.good_name }}
+                                    {% if sale.is_debt and sale.customer_name %}
+                                        <br><span class="text-xs text-gray-500">Müştəri: {{ sale.customer_name }}</span>
+                                    {% endif %}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                    {{ sale.good.category.name }}
+                                    {{ sale.category }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                    {{ sale.shop.name }}
+                                    {{ sale.shop_name }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ sale.quantity }}

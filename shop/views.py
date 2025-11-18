@@ -142,6 +142,7 @@ def process_sale(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
+@login_required
 def finance_dashboard(request):
     shops = Shop.objects.all()
     categories = Category.objects.all()
@@ -176,6 +177,7 @@ def finance_dashboard(request):
             except (ValueError, Decimal.InvalidOperation):
                 messages.error(request, 'Xərc məbləği düzgün deyil!')
 
+    # Get regular sales
     sales = Sale.objects.select_related('good', 'shop', 'good__category').all()
 
     if shop_id:
@@ -185,23 +187,44 @@ def finance_dashboard(request):
     if barcode:
         sales = sales.filter(good__barcode__icontains=barcode)
 
+    # Get ALL debts (including paid ones) for revenue calculation
+    # But only pending debts for current operations
+    all_debts = Debt.objects.select_related('shop').all()
+    pending_debts = all_debts.filter(status='pending')
+    
+    if shop_id:
+        all_debts = all_debts.filter(shop_id=shop_id)
+        pending_debts = pending_debts.filter(shop_id=shop_id)
+
     # Use Django's timezone system instead of pytz
     now = timezone.now()
     azerbaijan_offset = timedelta(hours=4)
     now_baku = now + azerbaijan_offset
     today_baku = now_baku.date()
 
-    # Date filter
+    # Date filter for both sales and debts
     if date_filter == 'today':
         sales = sales.filter(timestamp__date=today_baku)
+        all_debts = all_debts.filter(created_at__date=today_baku)
+        pending_debts = pending_debts.filter(created_at__date=today_baku)
     elif date_filter == 'week':
         start_of_week = now_baku - timedelta(days=now_baku.weekday())
         start_of_week_utc = start_of_week - azerbaijan_offset
         sales = sales.filter(timestamp__gte=start_of_week_utc)
+        all_debts = all_debts.filter(created_at__gte=start_of_week_utc)
+        pending_debts = pending_debts.filter(created_at__gte=start_of_week_utc)
     elif date_filter == 'month':
         sales = sales.filter(
             timestamp__year=now_baku.year,
             timestamp__month=now_baku.month
+        )
+        all_debts = all_debts.filter(
+            created_at__year=now_baku.year,
+            created_at__month=now_baku.month
+        )
+        pending_debts = pending_debts.filter(
+            created_at__year=now_baku.year,
+            created_at__month=now_baku.month
         )
     elif date_filter == 'custom' and start_date and end_date:
         try:
@@ -210,6 +233,8 @@ def finance_dashboard(request):
             
             if not start_time and not end_time:
                 sales = sales.filter(timestamp__date__gte=start_date_obj, timestamp__date__lte=end_date_obj)
+                all_debts = all_debts.filter(created_at__date__gte=start_date_obj, created_at__date__lte=end_date_obj)
+                pending_debts = pending_debts.filter(created_at__date__gte=start_date_obj, created_at__date__lte=end_date_obj)
             else:
                 if start_time:
                     start_dt = datetime.combine(start_date_obj, datetime.strptime(start_time, '%H:%M').time())
@@ -225,6 +250,8 @@ def finance_dashboard(request):
                 end_dt = timezone.make_aware(end_dt)
                 
                 sales = sales.filter(timestamp__gte=start_dt, timestamp__lte=end_dt)
+                all_debts = all_debts.filter(created_at__gte=start_dt, created_at__lte=end_dt)
+                pending_debts = pending_debts.filter(created_at__gte=start_dt, created_at__lte=end_dt)
             
         except Exception as e:
             import traceback
@@ -252,43 +279,108 @@ def finance_dashboard(request):
 
     total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-    # Calculate total revenue, items sold, number of sales, average sale
-    total_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
-    items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
-    num_sales = sales.count()
-    avg_sale = sales.aggregate(avg=Avg('total_price'))['avg'] or Decimal('0.00')
+    # Calculate revenue from both sales and ALL debts (including paid ones)
+    sales_revenue = sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
+    debts_revenue = all_debts.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00')
+    total_revenue = sales_revenue + debts_revenue
 
-    # Calculate total profit
-    profit_expr = ExpressionWrapper(
+    # Calculate items sold (from both sales and ALL debts)
+    sales_items_sold = sales.aggregate(total=Sum('quantity'))['total'] or 0
+    debts_items_sold = DebtItem.objects.filter(debt__in=all_debts).aggregate(total=Sum('quantity'))['total'] or 0
+    items_sold = sales_items_sold + debts_items_sold
+
+    # Calculate number of transactions (sales + ALL debts)
+    num_sales = sales.count() + all_debts.count()
+
+    # Calculate average sale
+    avg_sale = total_revenue / num_sales if num_sales > 0 else Decimal('0.00')
+
+    # Calculate total profit (from both sales and ALL debts)
+    sales_profit_expr = ExpressionWrapper(
         (F('good__price') - F('good__buy_price')) * F('quantity'),
         output_field=FloatField()
     )
-    total_profit = sales.aggregate(total=Sum(profit_expr))['total'] or 0
+    sales_profit = sales.aggregate(total=Sum(sales_profit_expr))['total'] or 0
+
+    # For ALL debts, profit is (selling price - buy price) * quantity
+    debt_items = DebtItem.objects.filter(debt__in=all_debts).select_related('good')
+    debts_profit = Decimal('0.00')
+    for debt_item in debt_items:
+        item_profit = (debt_item.unit_price - debt_item.good.buy_price) * debt_item.quantity
+        debts_profit += item_profit
+
+    total_profit = Decimal(str(sales_profit)) + debts_profit
 
     # Calculate net profit (profit - expenses)
-    net_profit = Decimal(str(total_profit)) - total_expenses
+    net_profit = total_profit - total_expenses
 
-    # Today / week / month revenue with Azerbaijan time adjustment
+    # Today / week / month revenue with Azerbaijan time adjustment (including ALL debts)
     today_sales = Sale.objects.filter(timestamp__date=today_baku)
-    today_revenue = today_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
+    today_all_debts = Debt.objects.filter(created_at__date=today_baku)
+    today_revenue = (today_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')) + \
+                   (today_all_debts.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00'))
 
     start_of_week_baku = now_baku - timedelta(days=now_baku.weekday())
     start_of_week_utc = start_of_week_baku - azerbaijan_offset
     week_sales = Sale.objects.filter(timestamp__gte=start_of_week_utc)
-    week_revenue = week_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
+    week_all_debts = Debt.objects.filter(created_at__gte=start_of_week_utc)
+    week_revenue = (week_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')) + \
+                  (week_all_debts.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00'))
 
     month_sales = Sale.objects.filter(
         timestamp__year=now_baku.year,
         timestamp__month=now_baku.month
     )
-    month_revenue = month_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')
+    month_all_debts = Debt.objects.filter(
+        created_at__year=now_baku.year,
+        created_at__month=now_baku.month
+    )
+    month_revenue = (month_sales.aggregate(total=Sum('total_price'))['total'] or Decimal('0.00')) + \
+                   (month_all_debts.aggregate(total=Sum('total_amount'))['total'] or Decimal('0.00'))
+
+    # Combine sales and pending debts for display (only show pending debts in the list)
+    combined_sales = []
+    
+    # Add regular sales
+    for sale in sales[:25]:  # Show first 25 sales
+        combined_sales.append({
+            'type': 'sale',
+            'timestamp': sale.timestamp,
+            'good_name': sale.good.name,
+            'category': sale.good.category.name,
+            'shop_name': sale.shop.name,
+            'quantity': sale.quantity,
+            'total_price': sale.total_price,
+            'is_debt': False
+        })
+    
+    # Add pending debts (limited to keep total around 50 items)
+    debt_count = min(25, pending_debts.count())
+    for debt in pending_debts[:debt_count]:
+        combined_sales.append({
+            'type': 'debt',
+            'timestamp': debt.created_at,
+            'good_name': f"BORC: {debt.customer_name}",
+            'category': 'Borc Satışı',
+            'shop_name': debt.shop.name,
+            'quantity': 1,  # Representing one debt transaction
+            'total_price': debt.total_amount,
+            'is_debt': True,
+            'customer_name': debt.customer_name
+        })
+    
+    # Sort by timestamp and take first 50
+    combined_sales.sort(key=lambda x: x['timestamp'], reverse=True)
+    combined_sales = combined_sales[:50]
 
     context = {
         'shops': shops,
         'categories': categories,
-        'sales': sales[:50],
+        'sales': combined_sales,
         'expenses': expenses,
         'total_revenue': total_revenue,
+        'sales_revenue': sales_revenue,
+        'debts_revenue': debts_revenue,
         'total_profit': total_profit,
         'net_profit': net_profit,
         'total_expenses': total_expenses,
@@ -309,7 +401,10 @@ def finance_dashboard(request):
             'end_time': end_time,
             'worker_shift': worker_shift,
         },
-        'current_baku_time': now_baku.strftime('%Y-%m-%d %H:%M:%S')
+        'current_baku_time': now_baku.strftime('%Y-%m-%d %H:%M:%S'),
+        'sales_count': sales.count(),
+        'debts_count': all_debts.count(),  # Count of ALL debts for revenue breakdown
+        'pending_debts_count': pending_debts.count()  # Count of pending debts for operations
     }
 
     return render(request, 'shop/finance.html', context)
@@ -440,35 +535,53 @@ def create_debt(request):
 @login_required
 @require_http_methods(["POST"])
 def pay_debt(request):
-    data = json.loads(request.body)
-    debt_id = data.get('debt_id')
-    amount = Decimal(data.get('amount', '0'))
-
-    if not debt_id or amount <= 0:
-        return JsonResponse({'error': 'Düzgün məbləğ daxil edin'}, status=400)
-
     try:
+        data = json.loads(request.body)
+        debt_id = data.get('debt_id')
+        amount_str = data.get('amount', '0')
+        
+        # Debug logging
+        print(f"DEBUG: Received payment - debt_id: {debt_id}, amount: {amount_str}")
+
+        if not debt_id or not amount_str:
+            return JsonResponse({'error': 'Borc ID və məbləğ tələb olunur'}, status=400)
+
+        # Convert amount to Decimal with proper handling
+        try:
+            amount = Decimal(amount_str)
+        except (Decimal.InvalidOperation, ValueError):
+            return JsonResponse({'error': 'Düzgün məbləğ formatı daxil edin (məs: 5.40, 0.50)'}, status=400)
+
+        if amount <= 0:
+            return JsonResponse({'error': 'Məbləğ müsbət olmalıdır'}, status=400)
+
         debt = Debt.objects.get(id=debt_id)
         
         if debt.status != 'pending':
             return JsonResponse({'error': 'Bu borc artıq ödənilib və ya ləğv edilib'}, status=400)
 
+        # Round to 2 decimal places to avoid floating point issues
+        amount = amount.quantize(Decimal('0.01'))
+        
         if amount > debt.remaining_amount:
-            return JsonResponse({'error': f'Ödəniş məbləği qalan məbləğdən çox ola bilməz. Qalan: {debt.remaining_amount} AZN'}, status=400)
+            return JsonResponse({
+                'error': f'Ödəniş məbləği qalan məbləğdən çox ola bilməz. Qalan: {debt.remaining_amount:.2f} AZN'
+            }, status=400)
 
         debt.paid_amount += amount
         debt.save()
 
         return JsonResponse({
             'success': True,
-            'message': f'{amount} AZN ödəniş qəbul edildi. Qalan məbləğ: {debt.remaining_amount} AZN',
+            'message': f'{amount:.2f} AZN ödəniş qəbul edildi. Qalan məbləğ: {debt.remaining_amount:.2f} AZN',
             'remaining_amount': float(debt.remaining_amount)
         })
 
     except Debt.DoesNotExist:
         return JsonResponse({'error': 'Borc tapılmadı'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        print(f"ERROR in pay_debt: {str(e)}")  # Debug logging
+        return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
 
 @login_required
 @require_http_methods(["POST"])
