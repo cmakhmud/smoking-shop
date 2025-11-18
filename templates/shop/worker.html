@@ -3,14 +3,14 @@
 {% block title %}İşçi Paneli - Siqaret Mağazası{% endblock %}
 
 {% block content %}
-<div class="px-4 py-6">
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">İşçi Paneli</h2>
+<div class="px-2 sm:px-4 py-4 sm:py-6">
+    <div class="mb-4 sm:mb-6">
+        <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3 sm:mb-4">İşçi Paneli</h2>
 
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div class="mb-4">
-                <label for="shop-select" class="block text-sm font-medium text-gray-700 mb-2">Mağaza Seçin</label>
-                <select id="shop-select" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
+            <div class="mb-3 sm:mb-4">
+                <label for="shop-select" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Mağaza Seçin</label>
+                <select id="shop-select" class="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <option value="">-- Mağaza seçin --</option>
                     {% for shop in shops %}
                         <option value="{{ shop.id }}">{{ shop.name }}</option>
@@ -19,19 +19,19 @@
             </div>
 
             <!-- SEARCH BY NAME SECTION -->
-            <div class="mb-4">
-                <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Məhsul Axtar</label>
-                <div class="flex space-x-2">
+            <div class="mb-3 sm:mb-4">
+                <label for="search-input" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Məhsul Axtar</label>
+                <div class="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
                     <input
                         type="text"
                         id="search-input"
                         placeholder="Məhsulun adını yazın..."
-                        class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        class="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         autocomplete="off"
                     >
                     <button
                         id="search-btn"
-                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition duration-200"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md transition duration-200 text-sm sm:text-base"
                     >
                         Axtar
                     </button>
@@ -39,55 +39,57 @@
             </div>
 
             <!-- SEARCH RESULTS -->
-            <div id="search-results" class="hidden mt-4 border border-gray-200 rounded-md max-h-60 overflow-y-auto">
+            <div id="search-results" class="hidden mt-3 sm:mt-4 border border-gray-200 rounded-md max-h-48 sm:max-h-60 overflow-y-auto">
                 <div id="search-results-list" class="divide-y divide-gray-200"></div>
             </div>
 
-            <div class="mb-4">
-                <label for="barcode-input" class="block text-sm font-medium text-gray-700 mb-2">Barkod Oxut</label>
+            <div class="mb-3 sm:mb-4">
+                <label for="barcode-input" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Barkod Oxut</label>
                 <input
                     type="text"
                     id="barcode-input"
                     placeholder="Kursoru buraya qoyun və barkod oxudun..."
-                    class="w-full px-4 py-3 text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 text-base sm:text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     autocomplete="off"
                 >
-                <p class="text-sm text-gray-500 mt-2">Kursoru buraya qoyun və barkod skanerindən istifadə edin</p>
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">Kursoru buraya qoyun və barkod skanerindən istifadə edin</p>
             </div>
 
-            <div id="error-message" class="hidden mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"></div>
-            <div id="success-message" class="hidden mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative"></div>
+            <div id="error-message" class="hidden mb-3 sm:mb-4 bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm"></div>
+            <div id="success-message" class="hidden mb-3 sm:mb-4 bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm"></div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2">
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-4">Oxudulmuş Məhsullar</h3>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Scanned Items - Full width on mobile, 2/3 on desktop -->
+        <div class="xl:col-span-2">
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Oxudulmuş Məhsullar</h3>
 
-                <div id="items-list" class="space-y-3">
-                    <p class="text-gray-500 text-center py-8">Hələ ki, heç bir məhsul oxudulmayıb</p>
+                <div id="items-list" class="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">Hələ ki, heç bir məhsul oxudulmayıb</p>
                 </div>
             </div>
         </div>
 
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-md p-6 sticky top-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-4">Cəmi</h3>
+        <!-- Summary Panel - Full width on mobile, 1/3 on desktop -->
+        <div class="xl:col-span-1">
+            <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 sticky top-4 sm:top-6">
+                <h3 class="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Cəmi</h3>
 
-                <div class="mb-6">
-                    <div class="flex justify-between mb-2">
-                        <span class="text-gray-600">Məhsullar:</span>
-                        <span id="total-items" class="font-semibold">0</span>
+                <div class="mb-4 sm:mb-6">
+                    <div class="flex justify-between mb-1 sm:mb-2">
+                        <span class="text-gray-600 text-sm sm:text-base">Məhsullar:</span>
+                        <span id="total-items" class="font-semibold text-sm sm:text-base">0</span>
                     </div>
-                    <div class="flex justify-between mb-4 pb-4 border-b border-gray-200">
-                        <span class="text-gray-600">Ümumi:</span>
-                        <span id="total-price" class="text-2xl font-bold text-gray-800">0.00 AZN</span>
+                    <div class="flex justify-between mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-gray-200">
+                        <span class="text-gray-600 text-sm sm:text-base">Ümumi:</span>
+                        <span id="total-price" class="text-xl sm:text-2xl font-bold text-gray-800">0.00 AZN</span>
                     </div>
                 </div>
 
-                <div class="mb-6">
-                    <h4 class="text-sm font-medium text-gray-700 mb-2">Kalkulyator</h4>
+                <div class="mb-4 sm:mb-6">
+                    <h4 class="text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Kalkulyator</h4>
                     <div class="space-y-2">
                         <div>
                             <label class="block text-xs text-gray-600 mb-1">Müştəri Ödənişi</label>
@@ -96,13 +98,13 @@
                                 id="customer-paid"
                                 placeholder="0.00"
                                 step="0.01"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                class="w-full px-2 sm:px-3 py-1 sm:py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                             >
                         </div>
-                        <div class="bg-gray-50 p-3 rounded-md">
+                        <div class="bg-gray-50 p-2 sm:p-3 rounded-md">
                             <div class="flex justify-between">
-                                <span class="text-sm text-gray-600">Qalıq:</span>
-                                <span id="change-amount" class="text-lg font-bold text-green-600">0.00 AZN</span>
+                                <span class="text-xs sm:text-sm text-gray-600">Qalıq:</span>
+                                <span id="change-amount" class="text-base sm:text-lg font-bold text-green-600">0.00 AZN</span>
                             </div>
                         </div>
                     </div>
@@ -110,7 +112,7 @@
 
                 <button
                     id="complete-sale-btn"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 sm:py-3 px-3 sm:px-4 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
                     disabled
                 >
                     Satışı Tamamla
@@ -118,7 +120,7 @@
 
                 <button
                     id="clear-all-btn"
-                    class="w-full mt-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-lg transition duration-200"
+                    class="w-full mt-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-3 sm:px-4 rounded-lg transition duration-200 text-sm sm:text-base"
                 >
                     Hamısını Təmizlə
                 </button>
@@ -208,22 +210,22 @@
 
     function displaySearchResults(results) {
         if (results.length === 0) {
-            searchResultsList.innerHTML = '<p class="text-gray-500 text-center py-4">Heç bir məhsul tapılmadı</p>';
+            searchResultsList.innerHTML = '<p class="text-gray-500 text-center py-3 sm:py-4 text-sm">Heç bir məhsul tapılmadı</p>';
             searchResults.classList.remove('hidden');
             return;
         }
 
         searchResultsList.innerHTML = results.map(good => `
-            <div class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick="addSearchedItem(${JSON.stringify(good).replace(/"/g, '&quot;')})">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h4 class="font-semibold text-gray-800">${good.name}</h4>
-                        <p class="text-sm text-gray-600">${good.category} • ${good.price} AZN</p>
+            <div class="p-2 sm:p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0" onclick="addSearchedItem(${JSON.stringify(good).replace(/"/g, '&quot;')})">
+                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-1 sm:space-y-0">
+                    <div class="flex-1">
+                        <h4 class="font-semibold text-gray-800 text-sm sm:text-base">${good.name}</h4>
+                        <p class="text-xs sm:text-sm text-gray-600">${good.category} • ${good.price} AZN</p>
                     </div>
-                    <div class="text-right">
-                        <span class="text-sm text-gray-500">Stok: ${good.stock_count}</span>
+                    <div class="text-left sm:text-right">
+                        <span class="text-xs sm:text-sm text-gray-500">Stok: ${good.stock_count}</span>
                         <div class="mt-1">
-                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Barkod: ${good.barcode}</span>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-1 sm:px-2 py-0.5 sm:py-1 rounded">Barkod: ${good.barcode}</span>
                         </div>
                     </div>
                 </div>
@@ -320,24 +322,24 @@
 
     function renderItems() {
         if (scannedItems.length === 0) {
-            itemsList.innerHTML = '<p class="text-gray-500 text-center py-8">Hələ ki, heç bir məhsul oxudulmayıb</p>';
+            itemsList.innerHTML = '<p class="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">Hələ ki, heç bir məhsul oxudulmayıb</p>';
             return;
         }
 
         itemsList.innerHTML = scannedItems.map((item, index) => `
-            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-2 sm:space-y-0">
                 <div class="flex-1">
-                    <h4 class="font-semibold text-gray-800">${item.name}</h4>
-                    <p class="text-sm text-gray-600">${item.category} • ${item.price} AZN</p>
+                    <h4 class="font-semibold text-gray-800 text-sm sm:text-base">${item.name}</h4>
+                    <p class="text-xs sm:text-sm text-gray-600">${item.category} • ${item.price} AZN</p>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <div class="flex items-center space-x-2">
-                        <button onclick="updateQuantity(${index}, ${item.quantity - 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-8 h-8 rounded">-</button>
-                        <span class="font-semibold w-8 text-center">${item.quantity}</span>
-                        <button onclick="updateQuantity(${index}, ${item.quantity + 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-8 h-8 rounded">+</button>
+                <div class="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-3">
+                    <div class="flex items-center space-x-1 sm:space-x-2">
+                        <button onclick="updateQuantity(${index}, ${item.quantity - 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-6 h-6 sm:w-8 sm:h-8 rounded text-xs sm:text-sm">-</button>
+                        <span class="font-semibold w-6 sm:w-8 text-center text-sm sm:text-base">${item.quantity}</span>
+                        <button onclick="updateQuantity(${index}, ${item.quantity + 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-6 h-6 sm:w-8 sm:h-8 rounded text-xs sm:text-sm">+</button>
                     </div>
-                    <span class="font-bold text-gray-800 w-20 text-right">${(item.price * item.quantity).toFixed(2)} AZN</span>
-                    <button onclick="removeItem(${index})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-3 py-1 rounded">Sil</button>
+                    <span class="font-bold text-gray-800 w-16 sm:w-20 text-right text-sm sm:text-base">${(item.price * item.quantity).toFixed(2)} AZN</span>
+                    <button onclick="removeItem(${index})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-1 sm:px-3 sm:py-1 rounded text-xs sm:text-sm">Sil</button>
                 </div>
             </div>
         `).join('');
@@ -449,6 +451,13 @@
     document.addEventListener('click', (e) => {
         if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) {
             hideSearchResults();
+        }
+    });
+
+    // Auto-focus barcode input on page load if shop is selected
+    document.addEventListener('DOMContentLoaded', function() {
+        if (shopSelect.value) {
+            barcodeInput.focus();
         }
     });
 </script>
