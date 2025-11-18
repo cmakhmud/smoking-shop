@@ -9,51 +9,97 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
+        .mobile-menu {
+            transition: all 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+            <!-- Mobile menu button and logo -->
+            <div class="flex justify-between items-center h-16">
                 <div class="flex items-center">
-                    <h1 class="text-xl font-bold text-gray-800">Siqaret Mağazası İdarəetmə Sistemi</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-gray-800">Smoking Shop</h1>
                 </div>
-                <div class="flex items-center space-x-4">
+                
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button type="button" id="mobile-menu-button" class="text-gray-700 hover:text-gray-900 focus:outline-none focus:text-gray-900">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Desktop menu -->
+                <div class="hidden md:flex items-center space-x-2 lg:space-x-4">
                     {% if user.is_authenticated %}
                         {% if user.is_staff or user.is_superuser %}
-                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">İşçi Paneli</a>
-                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Maliyyə Paneli</a>
-                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borc Yarat</a>
-                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borclar</a>
-                            <a href="/admin/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Admin Paneli</a>
+                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">İşçi Paneli</a>
+                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Maliyyə</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Borclar</a>
+                            <a href="/admin/" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Admin</a>
                         {% else %}
-                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">İşçi Paneli</a>
-                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Maliyyə Paneli</a>
-                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borc Yarat</a>
-                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Borclar</a>
+                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">İşçi Paneli</a>
+                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Maliyyə</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Borclar</a>
                         {% endif %}
-                        <span class="text-gray-700 text-sm">{{ user.username }}</span>
-                        
-                        <!-- Logout form with POST method -->
-                        <form method="post" action="{% url 'shop:logout' %}" class="inline m-0 p-0">
-                            {% csrf_token %}
-                            <button type="submit" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none cursor-pointer">
-                                Çıxış
-                            </button>
-                        </form>
+                        <div class="flex items-center space-x-2 lg:space-x-3 border-l border-gray-300 pl-2 lg:pl-3 ml-2 lg:ml-3">
+                            <span class="text-gray-700 text-xs lg:text-sm">{{ user.username }}</span>
+                            <form method="post" action="{% url 'shop:logout' %}" class="inline m-0 p-0">
+                                {% csrf_token %}
+                                <button type="submit" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium bg-transparent border-none cursor-pointer transition duration-200">
+                                    Çıxış
+                                </button>
+                            </form>
+                        </div>
                     {% else %}
-                        <a href="{% url 'shop:login' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Giriş</a>
+                        <a href="{% url 'shop:login' %}" class="text-gray-700 hover:text-gray-900 px-2 lg:px-3 py-2 rounded-md text-sm font-medium transition duration-200">Giriş</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Mobile menu -->
+            <div id="mobile-menu" class="mobile-menu hidden md:hidden pb-3 border-t border-gray-200">
+                <div class="flex flex-col space-y-2 mt-2">
+                    {% if user.is_authenticated %}
+                        {% if user.is_staff or user.is_superuser %}
+                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">İşçi Paneli</a>
+                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Maliyyə Paneli</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Borclar</a>
+                            <a href="/admin/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Admin Paneli</a>
+                        {% else %}
+                            <a href="{% url 'shop:worker' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">İşçi Paneli</a>
+                            <a href="{% url 'shop:finance' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Maliyyə Paneli</a>
+                            <a href="/create-debt/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Borc Yarat</a>
+                            <a href="/debts/" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Borclar</a>
+                        {% endif %}
+                        <div class="flex items-center justify-between px-3 py-2 border-t border-gray-200 mt-2 pt-2">
+                            <span class="text-gray-700 text-base">{{ user.username }}</span>
+                            <form method="post" action="{% url 'shop:logout' %}" class="inline m-0 p-0">
+                                {% csrf_token %}
+                                <button type="submit" class="text-gray-700 hover:text-gray-900 px-3 py-1 rounded-md text-base font-medium bg-transparent border border-gray-300 cursor-pointer transition duration-200">
+                                    Çıxış
+                                </button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <a href="{% url 'shop:login' %}" class="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium transition duration-200">Giriş</a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <main class="max-w-7xl mx-auto py-4 sm:py-6 px-3 sm:px-4 lg:px-8">
         {% if messages %}
-            <div class="mb-4">
+            <div class="mb-4 space-y-2">
                 {% for message in messages %}
-                    <div class="bg-{{ message.tags }}-100 border border-{{ message.tags }}-400 text-{{ message.tags }}-700 px-4 py-3 rounded relative mb-2" role="alert">
+                    <div class="{% if message.tags == 'success' %}bg-green-100 border-green-400 text-green-700{% elif message.tags == 'error' %}bg-red-100 border-red-400 text-red-700{% elif message.tags == 'warning' %}bg-yellow-100 border-yellow-400 text-yellow-700{% else %}bg-blue-100 border-blue-400 text-blue-700{% endif %} border px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm sm:text-base" role="alert">
                         <span class="block sm:inline">{{ message }}</span>
                     </div>
                 {% endfor %}
@@ -62,5 +108,36 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <script>
+        // Mobile menu functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function() {
+                    mobileMenu.classList.toggle('hidden');
+                    
+                    // Change icon based on menu state
+                    const icon = mobileMenuButton.querySelector('svg');
+                    if (mobileMenu.classList.contains('hidden')) {
+                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>';
+                    } else {
+                        icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>';
+                    }
+                });
+            }
+            
+            // Close mobile menu when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('nav') && !mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                    const icon = mobileMenuButton.querySelector('svg');
+                    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>';
+                }
+            });
+        });
+    </script>
 </body>
 </html>
