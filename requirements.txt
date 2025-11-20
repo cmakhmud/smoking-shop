@@ -1,0 +1,7 @@
+Django>=4.2,<4.3
+gunicorn
+whitenoise[brotli]
+dj-database-url
+psycopg2-binary
+django-cors-headers
+pytz  # Add this line
