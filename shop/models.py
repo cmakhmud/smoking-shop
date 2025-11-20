@@ -26,15 +26,12 @@ class Category(models.Model):
 
 
 class Good(models.Model):
-<<<<<<< HEAD
     PRODUCT_TYPES = [
         ('normal', 'Normal Product'),
         ('cigarette_pack', 'Cigarette Pack (20)'),
         ('cigarette_single', 'Single Cigarette'),
     ]
     
-=======
->>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
     name = models.CharField(max_length=200)
     price = models.DecimalField(
         max_digits=10,
@@ -62,7 +59,7 @@ class Good(models.Model):
         on_delete=models.CASCADE, 
         related_name='goods'
     )
-<<<<<<< HEAD
+
     # Add these new fields
     product_type = models.CharField(
         max_length=20, 
@@ -77,13 +74,7 @@ class Good(models.Model):
         limit_choices_to={'product_type': 'cigarette_pack'},
         related_name='related_singles'
     )
-
     def __str__(self):
-=======
-
-    def __str__(self):
-        # Safe __str__ method that won't crash
->>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
         shop_name = self.shop.name if self.shop else "No Shop"
         return f"{self.name} - {shop_name}"
 
