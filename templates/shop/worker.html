@@ -9,6 +9,7 @@
 
         <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
             <div class="mb-3 sm:mb-4">
+<<<<<<< HEAD
                 <label for="shop-select" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Mağaza
                     Seçin</label>
                 <select id="shop-select"
@@ -16,10 +17,18 @@
                     <option value="">-- Mağaza seçin --</option>
                     {% for shop in shops %}
                     <option value="{{ shop.id }}">{{ shop.name }}</option>
+=======
+                <label for="shop-select" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Mağaza Seçin</label>
+                <select id="shop-select" class="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="">-- Mağaza seçin --</option>
+                    {% for shop in shops %}
+                        <option value="{{ shop.id }}">{{ shop.name }}</option>
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                     {% endfor %}
                 </select>
             </div>
 
+<<<<<<< HEAD
             <!-- Cigarette Pack Opening Section -->
             <div class="col-span-1 sm:col-span-2 lg:col-span-1">
                 <div
@@ -69,18 +78,40 @@
                         autocomplete="off">
                     <button id="search-btn"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md transition duration-200 text-sm sm:text-base">
+=======
+            <!-- SEARCH BY NAME SECTION -->
+            <div class="mb-3 sm:mb-4">
+                <label for="search-input" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Məhsul Axtar</label>
+                <div class="flex flex-col sm:flex-row sm:space-x-2 space-y-2 sm:space-y-0">
+                    <input
+                        type="text"
+                        id="search-input"
+                        placeholder="Məhsulun adını yazın..."
+                        class="flex-1 px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autocomplete="off"
+                    >
+                    <button
+                        id="search-btn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-md transition duration-200 text-sm sm:text-base"
+                    >
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                         Axtar
                     </button>
                 </div>
             </div>
 
             <!-- SEARCH RESULTS -->
+<<<<<<< HEAD
             <div id="search-results"
                 class="hidden mt-3 sm:mt-4 border border-gray-200 rounded-md max-h-48 sm:max-h-60 overflow-y-auto">
+=======
+            <div id="search-results" class="hidden mt-3 sm:mt-4 border border-gray-200 rounded-md max-h-48 sm:max-h-60 overflow-y-auto">
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                 <div id="search-results-list" class="divide-y divide-gray-200"></div>
             </div>
 
             <div class="mb-3 sm:mb-4">
+<<<<<<< HEAD
                 <label for="barcode-input" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Barkod
                     Oxut</label>
                 <input type="text" id="barcode-input" placeholder="Kursoru buraya qoyun və barkod oxudun..."
@@ -96,6 +127,21 @@
             <div id="success-message"
                 class="hidden mb-3 sm:mb-4 bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm">
             </div>
+=======
+                <label for="barcode-input" class="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Barkod Oxut</label>
+                <input
+                    type="text"
+                    id="barcode-input"
+                    placeholder="Kursoru buraya qoyun və barkod oxudun..."
+                    class="w-full px-3 sm:px-4 py-2 sm:py-3 text-base sm:text-lg border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autocomplete="off"
+                >
+                <p class="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">Kursoru buraya qoyun və barkod skanerindən istifadə edin</p>
+            </div>
+
+            <div id="error-message" class="hidden mb-3 sm:mb-4 bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm"></div>
+            <div id="success-message" class="hidden mb-3 sm:mb-4 bg-green-100 border border-green-400 text-green-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative text-sm"></div>
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
         </div>
     </div>
 
@@ -106,8 +152,12 @@
                 <h3 class="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4">Oxudulmuş Məhsullar</h3>
 
                 <div id="items-list" class="space-y-2 sm:space-y-3 max-h-64 sm:max-h-96 overflow-y-auto">
+<<<<<<< HEAD
                     <p class="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">Hələ ki, heç bir məhsul
                         oxudulmayıb</p>
+=======
+                    <p class="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">Hələ ki, heç bir məhsul oxudulmayıb</p>
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                 </div>
             </div>
         </div>
@@ -133,19 +183,34 @@
                     <div class="space-y-2">
                         <div>
                             <label class="block text-xs text-gray-600 mb-1">Müştəri Ödənişi</label>
+<<<<<<< HEAD
                             <input type="number" id="customer-paid" placeholder="0.00" step="0.01"
                                 class="w-full px-2 sm:px-3 py-1 sm:py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500">
+=======
+                            <input
+                                type="number"
+                                id="customer-paid"
+                                placeholder="0.00"
+                                step="0.01"
+                                class="w-full px-2 sm:px-3 py-1 sm:py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                            >
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                         </div>
                         <div class="bg-gray-50 p-2 sm:p-3 rounded-md">
                             <div class="flex justify-between">
                                 <span class="text-xs sm:text-sm text-gray-600">Qalıq:</span>
+<<<<<<< HEAD
                                 <span id="change-amount" class="text-base sm:text-lg font-bold text-green-600">0.00
                                     AZN</span>
+=======
+                                <span id="change-amount" class="text-base sm:text-lg font-bold text-green-600">0.00 AZN</span>
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                             </div>
                         </div>
                     </div>
                 </div>
 
+<<<<<<< HEAD
                 <button id="complete-sale-btn"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 sm:py-3 px-3 sm:px-4 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
                     disabled>
@@ -154,6 +219,20 @@
 
                 <button id="clear-all-btn"
                     class="w-full mt-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-3 sm:px-4 rounded-lg transition duration-200 text-sm sm:text-base">
+=======
+                <button
+                    id="complete-sale-btn"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 sm:py-3 px-3 sm:px-4 rounded-lg transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm sm:text-base"
+                    disabled
+                >
+                    Satışı Tamamla
+                </button>
+
+                <button
+                    id="clear-all-btn"
+                    class="w-full mt-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-3 sm:px-4 rounded-lg transition duration-200 text-sm sm:text-base"
+                >
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
                     Hamısını Təmizlə
                 </button>
             </div>
@@ -487,7 +566,11 @@
     });
 
     // Auto-focus barcode input on page load if shop is selected
+<<<<<<< HEAD
     document.addEventListener('DOMContentLoaded', function () {
+=======
+    document.addEventListener('DOMContentLoaded', function() {
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
         if (shopSelect.value) {
             barcodeInput.focus();
         }

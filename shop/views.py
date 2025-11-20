@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from django.shortcuts import render, get_object_or_404 ,redirect  
+=======
+from django.shortcuts import render, get_object_or_404
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.db.models import Sum, Count, Avg, Q ,ExpressionWrapper ,F ,FloatField
@@ -618,6 +622,7 @@ def cancel_debt(request):
         return JsonResponse({'error': 'Borc tapılmadı'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+<<<<<<< HEAD
 
 
 @login_required
@@ -815,3 +820,5 @@ def api_open_pack(request):
             return JsonResponse({'error': 'Bu barkodla birdən çox məhsul tapıldı'}, status=400)
     except Exception as e:
         return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
+=======
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b

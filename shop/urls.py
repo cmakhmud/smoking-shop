@@ -23,8 +23,11 @@ urlpatterns = [
     path('api/debt/create/', views.create_debt, name='create_debt'),
     path('api/debt/pay/', views.pay_debt, name='pay_debt'),
     path('api/debt/cancel/', views.cancel_debt, name='cancel_debt'),
+<<<<<<< HEAD
     path('worker/open-pack/', views.worker_open_pack, name='worker_open_pack'),
     path('api/open-pack/', views.api_open_pack, name='api_open_pack'),
+=======
+>>>>>>> 9ba05cb6e28f966392abdcaa593db39b7caccb6b
     # Add authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='shop/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='shop:login'), name='logout'),
