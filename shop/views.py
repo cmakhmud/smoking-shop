@@ -14,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.contrib.auth.models import User
 from django.conf import settings
-from .models import Shop, Category, Good, Sale, Expense ,Debt, DebtItem
+from .models import Shop, Category, Good, Sale, Expense ,Debt, DebtItem , StockReceipt
 
 logger = logging.getLogger(__name__)
 
@@ -813,5 +813,150 @@ def api_open_pack(request):
             }, status=300)
         else:
             return JsonResponse({'error': 'Bu barkodla birdən çox məhsul tapıldı'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
+    
+
+@login_required
+def stock_receipt(request):
+    """Stock receipt page for workers and admin - multiple items with costs"""
+    worker_shop = None
+    if hasattr(request.user, 'worker'):
+        worker_shop = request.user.worker.shop
+    elif not request.user.is_staff and not request.user.is_superuser:
+        messages.error(request, "Bu səhifəyə giriş hüququnuz yoxdur")
+        return redirect('shop:worker')
+    
+    shops = Shop.objects.all()
+    
+    if request.method == 'POST':
+        items_data = request.POST.get('items_data', '')
+        notes = request.POST.get('notes', '')
+        supplier = request.POST.get('supplier', '')
+        receipt_type = request.POST.get('receipt_type', 'purchase')
+        shop_id = request.POST.get('shop_id')
+        
+        if not items_data:
+            messages.error(request, "Əlavə edilmiş məhsul yoxdur")
+        else:
+            try:
+                # Determine which shop to use
+                if request.user.is_staff or request.user.is_superuser:
+                    if shop_id:
+                        target_shop = Shop.objects.get(id=shop_id)
+                    else:
+                        messages.error(request, "Admin üçün mağaza seçmək məcburidir")
+                        return redirect('shop:stock_receipt')
+                else:
+                    target_shop = worker_shop
+                
+                # Parse items data
+                items = json.loads(items_data)
+                success_count = 0
+                total_cost = 0
+                error_messages = []
+                
+                for item in items:
+                    try:
+                        good = Good.objects.get(id=item['id'], shop=target_shop)
+                        
+                        # Create stock receipt
+                        StockReceipt.objects.create(
+                            good=good,
+                            quantity=item['quantity'],
+                            receipt_type=receipt_type,
+                            unit_cost=item.get('unit_cost', 0),
+                            supplier=supplier,
+                            notes=notes,
+                            created_by=request.user,
+                            shop=target_shop
+                        )
+                        success_count += 1
+                        total_cost += item.get('unit_cost', 0) * item['quantity']
+                        
+                    except Good.DoesNotExist:
+                        error_messages.append(f"{item.get('name', 'Unknown')} - Məhsul tapılmadı")
+                    except Exception as e:
+                        error_messages.append(f"{item.get('name', 'Unknown')} - Xəta: {str(e)}")
+                
+                if success_count > 0:
+                    messages.success(
+                        request,
+                        f"✅ {success_count} məhsulun stoku uğurla əlavə edildi! "
+                        f"Ümumi dəyər: {total_cost:.2f} AZN"
+                    )
+                
+                if error_messages:
+                    messages.warning(
+                        request,
+                        f"⚠️ Bəzi məhsullarda xəta: " + ", ".join(error_messages[:3])
+                    )
+                
+            except Exception as e:
+                messages.error(request, f"❌ Xəta baş verdi: {str(e)}")
+    
+    # Get recent receipts for display
+    if request.user.is_staff or request.user.is_superuser:
+        recent_receipts = StockReceipt.objects.select_related('good').order_by('-created_at')[:10]
+    else:
+        recent_receipts = StockReceipt.objects.filter(shop=worker_shop).select_related('good').order_by('-created_at')[:10]
+    
+    context = {
+        'worker_shop': worker_shop,
+        'shops': shops,
+        'recent_receipts': recent_receipts,
+        'is_admin': request.user.is_staff or request.user.is_superuser
+    }
+    return render(request, 'shop/stock_receipt.html', context)
+
+@login_required
+@require_http_methods(["POST"])
+def api_stock_receipt(request):
+    """API endpoint for stock receipt via barcode scan"""
+    data = json.loads(request.body)
+    barcode = data.get('barcode', '').strip()
+    quantity = data.get('quantity', 1)
+    receipt_type = data.get('receipt_type', 'purchase')
+    unit_cost = data.get('unit_cost', 0)
+    supplier = data.get('supplier', '')
+    shop_id = data.get('shop_id')
+    
+    # Check permissions
+    if not (hasattr(request.user, 'worker') or request.user.is_staff or request.user.is_superuser):
+        return JsonResponse({'error': 'Bu əməliyyatı yerinə yetirmək hüququnuz yoxdur'}, status=403)
+    
+    try:
+        # Determine shop
+        if request.user.is_staff or request.user.is_superuser:
+            if not shop_id:
+                return JsonResponse({'error': 'Admin üçün mağaza seçmək məcburidir'}, status=400)
+            target_shop = Shop.objects.get(id=shop_id)
+        else:
+            target_shop = request.user.worker.shop
+        
+        # Find product
+        good = Good.objects.get(barcode=barcode, shop=target_shop)
+        
+        # Create stock receipt
+        stock_receipt = StockReceipt.objects.create(
+            good=good,
+            quantity=quantity,
+            receipt_type=receipt_type,
+            unit_cost=unit_cost,
+            supplier=supplier,
+            created_by=request.user,
+            shop=target_shop
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{quantity} ədəd {good.name} stoka əlavə edildi',
+            'new_stock': good.stock_count,
+            'good_name': good.name,
+            'receipt_id': stock_receipt.id
+        })
+        
+    except Good.DoesNotExist:
+        return JsonResponse({'error': 'Bu barkodla məhsul tapılmadı'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)

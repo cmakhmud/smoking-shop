@@ -173,3 +173,38 @@ class DebtItem(models.Model):
 
     def __str__(self):
         return f"{self.good.name} x {self.quantity}"
+
+
+class StockReceipt(models.Model):
+    RECEIPT_TYPES = [
+        ('purchase', 'Satın Alma'),
+        ('transfer', 'Transfer'),
+        ('adjustment', 'Stok Düzeltme'),
+    ]
+    
+    good = models.ForeignKey(Good, on_delete=models.CASCADE, related_name='stock_receipts')
+    quantity = models.IntegerField(validators=[MinValueValidator(1)])
+    receipt_type = models.CharField(max_length=20, choices=RECEIPT_TYPES, default='purchase')
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], default=0)
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)], default=0)
+    supplier = models.CharField(max_length=200, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        self.total_cost = self.unit_cost * self.quantity
+        super().save(*args, **kwargs)
+        
+        # Update good stock count
+        self.good.stock_count += self.quantity
+        self.good.save()
+    
+    def __str__(self):
+        return f"{self.good.name} - {self.quantity} adet - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Stok Qəbulu"
+        verbose_name_plural = "Stok Qəbulları"

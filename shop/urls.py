@@ -27,6 +27,9 @@ urlpatterns = [
     path('worker/open-pack/', views.worker_open_pack, name='worker_open_pack'),
     path('api/open-pack/', views.api_open_pack, name='api_open_pack'),
 
+    path('stock-receipt/', views.stock_receipt, name='stock_receipt'),
+    path('api/stock-receipt/', views.api_stock_receipt, name='api_stock_receipt'),
+
     # Add authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='shop/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='shop:login'), name='logout'),

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import User
-from .models import Shop, Category, Good, Sale, Worker , Expense , Debt , DebtItem
+from .models import Shop, Category, Good, Sale, Worker , Expense , Debt , DebtItem ,StockReceipt
 
 
 class WorkerInline(admin.StackedInline):
@@ -117,6 +117,18 @@ class DebtAdmin(admin.ModelAdmin):
 class DebtItemAdmin(admin.ModelAdmin):
     list_display = ('debt', 'good', 'quantity', 'unit_price', 'total_price')
     list_filter = ('debt__shop',)
+
+@admin.register(StockReceipt)
+class StockReceiptAdmin(admin.ModelAdmin):
+    list_display = ['good', 'quantity', 'receipt_type', 'unit_cost', 'total_cost', 'supplier', 'shop', 'created_by', 'created_at']
+    list_filter = ['receipt_type', 'shop', 'created_at']
+    search_fields = ['good__name', 'supplier']
+    readonly_fields = ['total_cost', 'created_at']
+    
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 # Re-register UserAdmin
 admin.site.unregister(User)

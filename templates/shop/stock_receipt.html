@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Stok Qəbulu</h1>
+                    <p class="mt-2 text-lg text-gray-600">Barkod oxudaraq bir neçə məhsulun stokunu əlavə edin</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    {% if is_admin %}
+                    <div class="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg">
+                        <span class="text-sm font-medium">Admin Modu</span>
+                    </div>
+                    {% else %}
+                    <div class="bg-green-100 text-green-800 px-3 py-2 rounded-lg">
+                        <span class="text-sm font-medium">Mağaza:</span>
+                        <span class="font-semibold">{{ worker_shop.name }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column - Scan Form -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-4">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Məhsul Əlavə Et
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="mb-6 p-4 rounded-lg {% if message.tags == 'success' %}bg-green-50 border border-green-200 text-green-700{% else %}bg-red-50 border border-red-200 text-red-700{% endif %}">
+                                    <div class="flex items-center">
+                                        <svg class="w-5 h-5 mr-3 {% if message.tags == 'success' %}text-green-500{% else %}text-red-500{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            {% if message.tags == 'success' %}
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            {% else %}
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                            {% endif %}
+                                        </svg>
+                                        {{ message }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <!-- Shop Selection (Admin Only) -->
+                        {% if is_admin %}
+                        <div class="mb-6">
+                            <label for="shop_id" class="block text-sm font-medium text-gray-700 mb-2">Mağaza</label>
+                            <select id="shop_id" name="shop_id" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                <option value="">Mağaza seçin</option>
+                                {% for shop in shops %}
+                                    <option value="{{ shop.id }}">{{ shop.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+
+                        <!-- Supplier Information -->
+                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="supplier" class="block text-sm font-medium text-gray-700 mb-2">Tədarükçü</label>
+                                <input 
+                                    type="text" 
+                                    id="supplier" 
+                                    name="supplier"
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="Tədarükçü adı..."
+                                >
+                            </div>
+                            <div>
+                                <label for="receipt_type" class="block text-sm font-medium text-gray-700 mb-2">Qəbul Növü</label>
+                                <select id="receipt_type" name="receipt_type" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+                                    <option value="purchase">Satın Alma</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="adjustment">Stok Düzeltme</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Barcode Scanner -->
+                        <div class="mb-6">
+                            <label for="barcode" class="block text-sm font-medium text-gray-700 mb-2">
+                                Məhsul Barkodu
+                                <span class="text-xs text-gray-500 ml-1">(Enter tuşu ilə əlavə et)</span>
+                            </label>
+                            <div class="flex space-x-3">
+                                <input 
+                                    type="text" 
+                                    id="barcode" 
+                                    name="barcode" 
+                                    required 
+                                    autofocus
+                                    class="flex-1 px-4 py-4 text-lg border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="Barkodu oxudun və ya yazın..."
+                                >
+                                <button 
+                                    type="button" 
+                                    id="add-item-btn"
+                                    class="bg-green-500 hover:bg-green-600 text-white px-6 py-4 rounded-xl font-semibold transition-colors duration-200"
+                                >
+                                    Əlavə Et
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Scanned Items List -->
+                        <div id="items-list" class="mb-6 space-y-3 max-h-64 overflow-y-auto border border-gray-200 rounded-lg p-4">
+                            <p class="text-gray-500 text-center py-4">Hələ ki, heç bir məhsul əlavə edilməyib</p>
+                        </div>
+
+                        <!-- Summary -->
+                        <div class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-600">Ümumi Məhsul:</span>
+                                    <span id="total-items" class="font-semibold ml-2">0</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Ümumi Miqdar:</span>
+                                    <span id="total-quantity" class="font-semibold ml-2">0</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-600">Ümumi Dəyər:</span>
+                                    <span id="total-cost" class="font-semibold ml-2 text-green-600">0.00 AZN</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-6">
+                            <label for="notes" class="block text-sm font-medium text-gray-700 mb-2">Qeydlər</label>
+                            <textarea 
+                                id="notes" 
+                                name="notes" 
+                                rows="2"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                placeholder="Əlavə qeydlər..."
+                            ></textarea>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <form method="post" id="stockReceiptForm">
+                            {% csrf_token %}
+                            <input type="hidden" id="items-data" name="items_data">
+                            <input type="hidden" id="form-shop-id" name="shop_id">
+                            <input type="hidden" id="form-notes" name="notes">
+                            <input type="hidden" id="form-supplier" name="supplier">
+                            <input type="hidden" id="form-receipt-type" name="receipt_type">
+                            
+                            <button 
+                                type="submit" 
+                                id="submit-btn"
+                                disabled
+                                class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                <div class="flex items-center justify-center space-x-3">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span class="text-lg">Bütün Stokları Əlavə Et</span>
+                                </div>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Recent Receipts -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden sticky top-8">
+                    <div class="bg-gradient-to-r from-gray-600 to-gray-700 px-6 py-4">
+                        <h2 class="text-xl font-semibold text-white flex items-center">
+                            <svg class="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            Son Qəbullar
+                        </h2>
+                    </div>
+                    <div class="p-6">
+                        <div class="space-y-4 max-h-96 overflow-y-auto">
+                            {% for receipt in recent_receipts %}
+                                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 hover:bg-gray-100 transition-colors duration-200">
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex-1">
+                                            <h3 class="font-semibold text-gray-900 text-sm">{{ receipt.good.name }}</h3>
+                                            <p class="text-xs text-gray-500 mt-1">{{ receipt.quantity }} ədəd • {{ receipt.unit_cost }} AZN</p>
+                                            <p class="text-xs text-gray-500">{{ receipt.supplier }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">{{ receipt.created_at|timesince }} əvvəl</p>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold">
+                                                +{{ receipt.quantity }}
+                                            </div>
+                                            <div class="text-xs text-gray-600 mt-1">
+                                                {{ receipt.total_cost }} AZN
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <div class="text-center py-8">
+                                    <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                    <p class="text-gray-500 text-sm">Hələ ki, stok qəbulu yoxdur.</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let scannedItems = [];
+let currentShopId = null;
+
+const barcodeInput = document.getElementById('barcode');
+const addItemBtn = document.getElementById('add-item-btn');
+const itemsList = document.getElementById('items-list');
+const submitBtn = document.getElementById('submit-btn');
+const itemsData = document.getElementById('items-data');
+const formShopId = document.getElementById('form-shop-id');
+const formNotes = document.getElementById('form-notes');
+const formSupplier = document.getElementById('form-supplier');
+const formReceiptType = document.getElementById('form-receipt-type');
+const notesInput = document.getElementById('notes');
+const supplierInput = document.getElementById('supplier');
+const receiptTypeSelect = document.getElementById('receipt_type');
+const shopSelect = document.getElementById('shop_id');
+const totalItems = document.getElementById('total-items');
+const totalQuantity = document.getElementById('total-quantity');
+const totalCost = document.getElementById('total-cost');
+
+// Set shop for admin
+if (shopSelect) {
+    shopSelect.addEventListener('change', (e) => {
+        currentShopId = e.target.value;
+        formShopId.value = currentShopId;
+    });
+} else {
+    // For workers, use their shop
+    currentShopId = '{{ worker_shop.id }}';
+    formShopId.value = currentShopId;
+}
+
+// Update form data
+supplierInput.addEventListener('input', () => {
+    formSupplier.value = supplierInput.value;
+});
+
+receiptTypeSelect.addEventListener('change', () => {
+    formReceiptType.value = receiptTypeSelect.value;
+});
+
+notesInput.addEventListener('input', () => {
+    formNotes.value = notesInput.value;
+});
+
+// Add item on button click
+addItemBtn.addEventListener('click', addItemByBarcode);
+
+// Add item on Enter key
+barcodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addItemByBarcode();
+    }
+});
+
+async function addItemByBarcode() {
+    const barcode = barcodeInput.value.trim();
+    
+    if (!barcode) {
+        alert('Zəhmət olmasa barkod daxil edin');
+        return;
+    }
+
+    if (!currentShopId) {
+        alert('Zəhmət olmasa mağaza seçin');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/scan/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                barcode: barcode,
+                shop_id: currentShopId
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            addItemToList(data);
+            barcodeInput.value = '';
+            barcodeInput.focus();
+        } else {
+            alert(data.error || 'Məhsul tapılmadı');
+        }
+    } catch (error) {
+        alert('Xəta baş verdi: ' + error);
+    }
+}
+
+function addItemToList(good) {
+    const existingItem = scannedItems.find(item => item.id === good.id);
+    
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        scannedItems.push({
+            id: good.id,
+            name: good.name,
+            barcode: good.barcode,
+            quantity: 1,
+            current_stock: good.stock_count,
+            unit_cost: 0, // Default unit cost
+            total_cost: 0 // Will be calculated
+        });
+    }
+    
+    renderItemsList();
+    updateSubmitButton();
+    updateSummary();
+}
+
+function removeItem(index) {
+    scannedItems.splice(index, 1);
+    renderItemsList();
+    updateSubmitButton();
+    updateSummary();
+}
+
+function updateQuantity(index, newQuantity) {
+    if (newQuantity <= 0) {
+        removeItem(index);
+    } else {
+        scannedItems[index].quantity = newQuantity;
+        scannedItems[index].total_cost = scannedItems[index].quantity * scannedItems[index].unit_cost;
+        renderItemsList();
+        updateSubmitButton();
+        updateSummary();
+    }
+}
+
+function updateUnitCost(index, newUnitCost) {
+    scannedItems[index].unit_cost = parseFloat(newUnitCost) || 0;
+    scannedItems[index].total_cost = scannedItems[index].quantity * scannedItems[index].unit_cost;
+    renderItemsList();
+    updateSubmitButton();
+    updateSummary();
+}
+
+function renderItemsList() {
+    if (scannedItems.length === 0) {
+        itemsList.innerHTML = '<p class="text-gray-500 text-center py-4">Hələ ki, heç bir məhsul əlavə edilməyib</p>';
+        return;
+    }
+
+    itemsList.innerHTML = scannedItems.map((item, index) => `
+        <div class="bg-gray-50 rounded-lg border border-gray-200 p-3">
+            <div class="flex items-start justify-between mb-2">
+                <div class="flex-1">
+                    <h4 class="font-semibold text-gray-800 text-sm">${item.name}</h4>
+                    <p class="text-xs text-gray-600">Barkod: ${item.barcode} • Cari stok: ${item.current_stock}</p>
+                </div>
+                <button onclick="removeItem(${index})" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-1 rounded text-xs">Sil</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Miqdar</label>
+                    <div class="flex items-center space-x-1">
+                        <button onclick="updateQuantity(${index}, ${item.quantity - 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-6 h-6 rounded text-xs">-</button>
+                        <input 
+                            type="number" 
+                            value="${item.quantity}" 
+                            min="1"
+                            onchange="updateQuantity(${index}, this.value)"
+                            class="w-12 text-center border border-gray-300 rounded text-xs py-1"
+                        >
+                        <button onclick="updateQuantity(${index}, ${item.quantity + 1})" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold w-6 h-6 rounded text-xs">+</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Vahid Qiymət (AZN)</label>
+                    <input 
+                        type="number" 
+                        value="${item.unit_cost}" 
+                        step="0.01"
+                        min="0"
+                        onchange="updateUnitCost(${index}, this.value)"
+                        class="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                        placeholder="0.00"
+                    >
+                </div>
+                
+                <div>
+                    <label class="block text-xs text-gray-600 mb-1">Ümumi Qiymət</label>
+                    <div class="font-semibold text-green-600 text-xs py-1">
+                        ${item.total_cost.toFixed(2)} AZN
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateSummary() {
+    const totalItemsCount = scannedItems.length;
+    const totalQuantityCount = scannedItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalCostValue = scannedItems.reduce((sum, item) => sum + item.total_cost, 0);
+    
+    totalItems.textContent = totalItemsCount;
+    totalQuantity.textContent = totalQuantityCount;
+    totalCost.textContent = totalCostValue.toFixed(2) + ' AZN';
+}
+
+function updateSubmitButton() {
+    if (scannedItems.length > 0) {
+        submitBtn.disabled = false;
+        itemsData.value = JSON.stringify(scannedItems);
+    } else {
+        submitBtn.disabled = true;
+        itemsData.value = '';
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Focus on barcode field
+document.addEventListener('DOMContentLoaded', function() {
+    barcodeInput.focus();
+});
+</script>
+{% endblock %}
