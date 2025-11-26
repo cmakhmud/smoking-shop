@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator
 from django.contrib.auth.models import User
 from datetime import datetime
 from django.utils import timezone
+from decimal import Decimal
 
 class Shop(models.Model):
     name = models.CharField(max_length=200, unique=True)
@@ -174,7 +175,6 @@ class DebtItem(models.Model):
     def __str__(self):
         return f"{self.good.name} x {self.quantity}"
 
-
 class StockReceipt(models.Model):
     RECEIPT_TYPES = [
         ('purchase', 'Satın Alma'),
@@ -193,13 +193,43 @@ class StockReceipt(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     
-    def save(self, *args, **kwargs):
-        self.total_cost = self.unit_cost * self.quantity
-        super().save(*args, **kwargs)
+    def clean(self):
+        """Validation before saving"""
+        super().clean()
         
-        # Update good stock count
-        self.good.stock_count += self.quantity
+        # Ensure the good belongs to the same shop
+        if self.good.shop != self.shop:
+            raise ValidationError("Good does not belong to the selected shop.")
+    
+    def save(self, *args, **kwargs):
+        # Convert to Decimal to ensure proper calculation
+        quantity_decimal = Decimal(str(self.quantity))
+        unit_cost_decimal = Decimal(str(self.unit_cost))
+        
+        # Calculate total cost before saving
+        self.total_cost = quantity_decimal * unit_cost_decimal
+        
+        # Check if this is a new record or an update
+        if self.pk is None:  # New record
+            # Update good stock count
+            self.good.stock_count += self.quantity
+            self.good.save()
+        else:  # Updating existing record
+            # Get the old receipt to calculate the difference
+            old_receipt = StockReceipt.objects.get(pk=self.pk)
+            quantity_diff = self.quantity - old_receipt.quantity
+            
+            # Update good stock count by the difference
+            self.good.stock_count += quantity_diff
+            self.good.save()
+        
+        super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+        # When deleting a receipt, subtract the quantity from stock
+        self.good.stock_count -= self.quantity
         self.good.save()
+        super().delete(*args, **kwargs)
     
     def __str__(self):
         return f"{self.good.name} - {self.quantity} adet - {self.created_at.strftime('%Y-%m-%d %H:%M')}"

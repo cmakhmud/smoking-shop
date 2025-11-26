@@ -30,6 +30,10 @@ urlpatterns = [
     path('stock-receipt/', views.stock_receipt, name='stock_receipt'),
     path('api/stock-receipt/', views.api_stock_receipt, name='api_stock_receipt'),
 
+    # NEW URLs for stock management scanning (finds goods even with 0 stock)
+    path('api/scan-stock/', views.scan_barcode_for_stock, name='scan_barcode_stock'),
+    path('api/search-stock/', views.search_goods_for_stock, name='search_goods_stock'),
+
     # Add authentication URLs
     path('login/', auth_views.LoginView.as_view(template_name='shop/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='shop:login'), name='logout'),

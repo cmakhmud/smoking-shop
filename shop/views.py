@@ -28,11 +28,12 @@ def search_goods(request):
         return JsonResponse({'results': []})
     
     try:
+        # KEEP stock_count__gt=0 for sales search
         goods = Good.objects.filter(
             Q(name__icontains=query) | Q(barcode__icontains=query),
             shop_id=shop_id,
-            stock_count__gt=0
-        )[:10]  # Limit to 10 results
+            stock_count__gt=0  # ← KEEP THIS for sales
+        )[:10]
         
         results = []
         for good in goods:
@@ -49,6 +50,7 @@ def search_goods(request):
         
     except Exception as e:
         return JsonResponse({'error': 'Axtarış xətası'}, status=500)
+
 
 def health_check(request):
     try:
@@ -73,7 +75,6 @@ def worker_dashboard(request):
     return render(request, 'shop/worker.html', {'shops': shops})
 
 
-@require_http_methods(["POST"])
 def scan_barcode(request):
     data = json.loads(request.body)
     barcode = data.get('barcode', '').strip()
@@ -83,19 +84,19 @@ def scan_barcode(request):
         return JsonResponse({'error': 'Barcode and shop are required'}, status=400)
 
     try:
-        # Use only() to select specific fields and reduce data transfer
+        # KEEP stock_count__gt=0 filter for sales - don't show goods with 0 stock
         good = Good.objects.select_related('category').only(
             'id', 'name', 'price', 'barcode', 'stock_count', 'category__name'
         ).get(
             barcode=barcode,
             shop_id=shop_id,
-            stock_count__gt=0  # Combine stock check in query
+            stock_count__gt=0  # ← KEEP THIS for sales
         )
 
         return JsonResponse({
             'id': good.id,
             'name': good.name,
-            'price': float(good.price),  # Convert to float for JSON
+            'price': float(good.price),
             'category': good.category.name,
             'stock_count': good.stock_count,
             'barcode': good.barcode
@@ -817,6 +818,73 @@ def api_open_pack(request):
         return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
     
 
+@require_http_methods(["POST"])
+def scan_barcode_for_stock(request):
+    """For stock receipt/management - finds goods even with 0 stock"""
+    data = json.loads(request.body)
+    barcode = data.get('barcode', '').strip()
+    shop_id = data.get('shop_id')
+
+    if not barcode or not shop_id:
+        return JsonResponse({'error': 'Barcode and shop are required'}, status=400)
+
+    try:
+        # NO stock filter - find goods even with 0 stock
+        good = Good.objects.select_related('category').only(
+            'id', 'name', 'price', 'barcode', 'stock_count', 'category__name', 'buy_price'
+        ).get(
+            barcode=barcode,
+            shop_id=shop_id
+            # No stock_count__gt=0 filter here
+        )
+
+        return JsonResponse({
+            'id': good.id,
+            'name': good.name,
+            'price': float(good.price),
+            'buy_price': float(good.buy_price),
+            'category': good.category.name,
+            'stock_count': good.stock_count,  # This can be 0
+            'barcode': good.barcode
+        })
+        
+    except Good.DoesNotExist:
+        return JsonResponse({'error': 'Good not found with this barcode'}, status=404)
+
+# NEW FUNCTION for stock management search
+def search_goods_for_stock(request):
+    """For stock receipt/management - finds goods even with 0 stock"""
+    query = request.GET.get('q', '').strip()
+    shop_id = request.GET.get('shop_id')
+    
+    if not query or not shop_id:
+        return JsonResponse({'results': []})
+    
+    try:
+        # NO stock filter for stock management
+        goods = Good.objects.filter(
+            Q(name__icontains=query) | Q(barcode__icontains=query),
+            shop_id=shop_id
+            # No stock_count__gt=0 filter here
+        )[:10]
+        
+        results = []
+        for good in goods:
+            results.append({
+                'id': good.id,
+                'name': good.name,
+                'price': float(good.price),
+                'buy_price': float(good.buy_price),
+                'barcode': good.barcode,
+                'category': good.category.name if good.category else '',
+                'stock_count': good.stock_count  # Can be 0
+            })
+        
+        return JsonResponse({'results': results})
+        
+    except Exception as e:
+        return JsonResponse({'error': 'Axtarış xətası'}, status=500)
+
 @login_required
 def stock_receipt(request):
     """Stock receipt page for workers and admin - multiple items with costs"""
@@ -853,26 +921,30 @@ def stock_receipt(request):
                 # Parse items data
                 items = json.loads(items_data)
                 success_count = 0
-                total_cost = 0
+                total_cost = Decimal('0.00')
                 error_messages = []
                 
                 for item in items:
                     try:
                         good = Good.objects.get(id=item['id'], shop=target_shop)
                         
+                        # Ensure proper data types
+                        quantity = int(item['quantity'])
+                        unit_cost = Decimal(str(item.get('unit_cost', 0)))
+                        
                         # Create stock receipt
                         StockReceipt.objects.create(
                             good=good,
-                            quantity=item['quantity'],
+                            quantity=quantity,
                             receipt_type=receipt_type,
-                            unit_cost=item.get('unit_cost', 0),
+                            unit_cost=unit_cost,
                             supplier=supplier,
                             notes=notes,
                             created_by=request.user,
                             shop=target_shop
                         )
                         success_count += 1
-                        total_cost += item.get('unit_cost', 0) * item['quantity']
+                        total_cost += unit_cost * quantity
                         
                     except Good.DoesNotExist:
                         error_messages.append(f"{item.get('name', 'Unknown')} - Məhsul tapılmadı")
@@ -934,7 +1006,7 @@ def api_stock_receipt(request):
         else:
             target_shop = request.user.worker.shop
         
-        # Find product
+        # Find product - NO stock filter for stock management
         good = Good.objects.get(barcode=barcode, shop=target_shop)
         
         # Create stock receipt

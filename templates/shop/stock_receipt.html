@@ -68,6 +68,29 @@
                         </div>
                         {% endif %}
 
+                        <!-- Search Functionality -->
+                        <div class="mb-4">
+                            <label for="search-product" class="block text-sm font-medium text-gray-700 mb-2">
+                                Məhsul axtar
+                            </label>
+                            <div class="flex space-x-3">
+                                <input 
+                                    type="text" 
+                                    id="search-product" 
+                                    class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    placeholder="Məhsul adı və ya barkodu..."
+                                >
+                                <button 
+                                    type="button" 
+                                    id="search-btn"
+                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                                >
+                                    Axtar
+                                </button>
+                            </div>
+                            <div id="search-results" class="mt-2 hidden max-h-48 overflow-y-auto border border-gray-200 rounded-lg"></div>
+                        </div>
+
                         <!-- Supplier Information -->
                         <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -246,6 +269,9 @@ const shopSelect = document.getElementById('shop_id');
 const totalItems = document.getElementById('total-items');
 const totalQuantity = document.getElementById('total-quantity');
 const totalCost = document.getElementById('total-cost');
+const searchInput = document.getElementById('search-product');
+const searchBtn = document.getElementById('search-btn');
+const searchResults = document.getElementById('search-results');
 
 // Set shop for admin
 if (shopSelect) {
@@ -283,6 +309,14 @@ barcodeInput.addEventListener('keypress', (e) => {
     }
 });
 
+// Search functionality
+searchBtn.addEventListener('click', searchProducts);
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        searchProducts();
+    }
+});
+
 async function addItemByBarcode() {
     const barcode = barcodeInput.value.trim();
     
@@ -297,7 +331,8 @@ async function addItemByBarcode() {
     }
 
     try {
-        const response = await fetch('/api/scan/', {
+        // USE STOCK SCANNING ENDPOINT - finds goods even with 0 stock
+        const response = await fetch('/api/scan-stock/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -323,6 +358,59 @@ async function addItemByBarcode() {
     }
 }
 
+async function searchProducts() {
+    const query = searchInput.value.trim();
+    
+    if (!query) {
+        alert('Zəhmət olmasa axtarış sözü daxil edin');
+        return;
+    }
+
+    if (!currentShopId) {
+        alert('Zəhmət olmasa mağaza seçin');
+        return;
+    }
+
+    try {
+        // USE STOCK SEARCH ENDPOINT - finds goods even with 0 stock
+        const response = await fetch(`/api/search-stock/?q=${encodeURIComponent(query)}&shop_id=${currentShopId}`);
+        const data = await response.json();
+
+        if (response.ok) {
+            displaySearchResults(data.results);
+        } else {
+            alert(data.error || 'Axtarış xətası');
+        }
+    } catch (error) {
+        alert('Xəta baş verdi: ' + error);
+    }
+}
+
+function displaySearchResults(results) {
+    if (results.length === 0) {
+        searchResults.innerHTML = '<p class="text-gray-500 text-center py-4">Heç bir məhsul tapılmadı</p>';
+        searchResults.classList.remove('hidden');
+        return;
+    }
+
+    searchResults.innerHTML = results.map(good => `
+        <div class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer" onclick="addSearchedItem(${JSON.stringify(good).replace(/"/g, '&quot;')})">
+            <div class="font-semibold text-gray-800">${good.name}</div>
+            <div class="text-sm text-gray-600">Barkod: ${good.barcode} • Stok: ${good.stock_count}</div>
+            <div class="text-sm text-gray-500">Qiymət: ${good.price} AZN</div>
+        </div>
+    `).join('');
+    
+    searchResults.classList.remove('hidden');
+}
+
+function addSearchedItem(good) {
+    addItemToList(good);
+    searchInput.value = '';
+    searchResults.classList.add('hidden');
+    searchResults.innerHTML = '';
+}
+
 function addItemToList(good) {
     const existingItem = scannedItems.find(item => item.id === good.id);
     
@@ -335,8 +423,8 @@ function addItemToList(good) {
             barcode: good.barcode,
             quantity: 1,
             current_stock: good.stock_count,
-            unit_cost: 0, // Default unit cost
-            total_cost: 0 // Will be calculated
+            unit_cost: good.buy_price || 0, // Use buy_price if available
+            total_cost: (good.buy_price || 0) // Will be calculated
         });
     }
     
@@ -462,6 +550,13 @@ function getCookie(name) {
     }
     return cookieValue;
 }
+
+// Close search results when clicking outside
+document.addEventListener('click', (e) => {
+    if (!searchResults.contains(e.target) && e.target !== searchInput && e.target !== searchBtn) {
+        searchResults.classList.add('hidden');
+    }
+});
 
 // Focus on barcode field
 document.addEventListener('DOMContentLoaded', function() {
