@@ -896,6 +896,7 @@ def stock_receipt(request):
         return redirect('shop:worker')
     
     shops = Shop.objects.all()
+    categories = Category.objects.all()
     
     if request.method == 'POST':
         items_data = request.POST.get('items_data', '')
@@ -904,68 +905,119 @@ def stock_receipt(request):
         receipt_type = request.POST.get('receipt_type', 'purchase')
         shop_id = request.POST.get('shop_id')
         
-        if not items_data:
+        print(f"=== STOCK RECEIPT POST DATA ===")
+        print(f"items_data length: {len(items_data)}")
+        print(f"notes: {notes}")
+        print(f"supplier: {supplier}")
+        print(f"receipt_type: {receipt_type}")
+        print(f"shop_id: {shop_id}")
+        
+        if not items_data or items_data == '[]' or items_data == 'null':
             messages.error(request, "Əlavə edilmiş məhsul yoxdur")
-        else:
-            try:
-                # Determine which shop to use
-                if request.user.is_staff or request.user.is_superuser:
-                    if shop_id:
-                        target_shop = Shop.objects.get(id=shop_id)
-                    else:
-                        messages.error(request, "Admin üçün mağaza seçmək məcburidir")
-                        return redirect('shop:stock_receipt')
+            return redirect('shop:stock_receipt')
+        
+        try:
+            # Determine which shop to use
+            if request.user.is_staff or request.user.is_superuser:
+                if shop_id:
+                    target_shop = Shop.objects.get(id=shop_id)
+                    print(f"DEBUG: Admin selected shop_id={shop_id}, shop_name={target_shop.name}")
                 else:
-                    target_shop = worker_shop
-                
-                # Parse items data
+                    messages.error(request, "Admin üçün mağaza seçmək məcburidir")
+                    return redirect('shop:stock_receipt')
+            else:
+                target_shop = worker_shop
+                print(f"DEBUG: Worker shop = {worker_shop.id if worker_shop else 'None'}")
+            
+            # Parse items data
+            try:
                 items = json.loads(items_data)
-                success_count = 0
-                total_cost = Decimal('0.00')
-                error_messages = []
-                
-                for item in items:
-                    try:
-                        good = Good.objects.get(id=item['id'], shop=target_shop)
-                        
-                        # Ensure proper data types
-                        quantity = int(item['quantity'])
-                        unit_cost = Decimal(str(item.get('unit_cost', 0)))
-                        
-                        # Create stock receipt
-                        StockReceipt.objects.create(
-                            good=good,
-                            quantity=quantity,
-                            receipt_type=receipt_type,
-                            unit_cost=unit_cost,
-                            supplier=supplier,
-                            notes=notes,
-                            created_by=request.user,
-                            shop=target_shop
-                        )
-                        success_count += 1
-                        total_cost += unit_cost * quantity
-                        
-                    except Good.DoesNotExist:
-                        error_messages.append(f"{item.get('name', 'Unknown')} - Məhsul tapılmadı")
-                    except Exception as e:
-                        error_messages.append(f"{item.get('name', 'Unknown')} - Xəta: {str(e)}")
-                
-                if success_count > 0:
-                    messages.success(
-                        request,
-                        f"✅ {success_count} məhsulun stoku uğurla əlavə edildi! "
-                        f"Ümumi dəyər: {total_cost:.2f} AZN"
+                print(f"DEBUG: Parsed {len(items)} items")
+                print(f"DEBUG: Items data: {items}")
+            except json.JSONDecodeError as je:
+                print(f"DEBUG: JSON decode error: {je}")
+                print(f"DEBUG: Problematic JSON: {items_data[:200]}")
+                messages.error(request, f"JSON məlumatları düzgün deyil: {str(je)}")
+                return redirect('shop:stock_receipt')
+            
+            success_count = 0
+            total_cost = Decimal('0.00')
+            error_messages = []
+            
+            for index, item in enumerate(items):
+                try:
+                    print(f"DEBUG: Processing item {index + 1}/{len(items)}: {item}")
+                    
+                    # Validate item data
+                    if 'id' not in item:
+                        error_messages.append(f"Item {index + 1}: ID yoxdur")
+                        continue
+                    
+                    item_id = item['id']
+                    if not item_id:
+                        error_messages.append(f"Item {index + 1}: ID boşdur")
+                        continue
+                    
+                    good = Good.objects.get(id=item_id, shop=target_shop)
+                    print(f"DEBUG: Found good: {good.name} (ID: {good.id})")
+                    
+                    # Ensure proper data types
+                    quantity = int(item.get('quantity', 1))
+                    unit_cost_str = str(item.get('unit_cost', '0')).replace(',', '.')
+                    unit_cost = Decimal(unit_cost_str)
+                    
+                    print(f"DEBUG: quantity={quantity}, unit_cost={unit_cost}")
+                    
+                    # Create stock receipt
+                    StockReceipt.objects.create(
+                        good=good,
+                        quantity=quantity,
+                        receipt_type=receipt_type,
+                        unit_cost=unit_cost,
+                        supplier=supplier,
+                        notes=notes,
+                        created_by=request.user,
+                        shop=target_shop
                     )
-                
-                if error_messages:
-                    messages.warning(
-                        request,
-                        f"⚠️ Bəzi məhsullarda xəta: " + ", ".join(error_messages[:3])
-                    )
-                
-            except Exception as e:
-                messages.error(request, f"❌ Xəta baş verdi: {str(e)}")
+                    success_count += 1
+                    total_cost += unit_cost * quantity
+                    print(f"DEBUG: Created receipt for {good.name}")
+                    
+                except Good.DoesNotExist:
+                    error_msg = f"{item.get('name', f'Item {index + 1}')} - Məhsul tapılmadı"
+                    error_messages.append(error_msg)
+                    print(f"DEBUG: {error_msg}")
+                except ValueError as ve:
+                    error_msg = f"{item.get('name', f'Item {index + 1}')} - Dəyər xətası: {str(ve)}"
+                    error_messages.append(error_msg)
+                    print(f"DEBUG: Value error: {ve}")
+                except Exception as e:
+                    error_msg = f"{item.get('name', f'Item {index + 1}')} - Xəta: {str(e)}"
+                    error_messages.append(error_msg)
+                    print(f"DEBUG: Item error: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            if success_count > 0:
+                success_msg = f"✅ {success_count} məhsulun stoku uğurla əlavə edildi! Ümumi dəyər: {total_cost:.2f} AZN"
+                messages.success(request, success_msg)
+                print(f"DEBUG: Success - {success_msg}")
+            
+            if error_messages:
+                warning_msg = f"⚠️ {len(error_messages)} məhsulda xəta: " + ", ".join(error_messages[:3])
+                if len(error_messages) > 3:
+                    warning_msg += f" və {len(error_messages) - 3} digəri"
+                messages.warning(request, warning_msg)
+                print(f"DEBUG: Warnings - {warning_msg}")
+            
+        except Exception as e:
+            error_msg = f"❌ Xəta baş verdi: {str(e)}"
+            messages.error(request, error_msg)
+            print(f"DEBUG: General exception: {e}")
+            import traceback
+            traceback.print_exc()
+        
+        return redirect('shop:stock_receipt')
     
     # Get recent receipts for display
     if request.user.is_staff or request.user.is_superuser:
@@ -976,6 +1028,7 @@ def stock_receipt(request):
     context = {
         'worker_shop': worker_shop,
         'shops': shops,
+        'categories': categories,
         'recent_receipts': recent_receipts,
         'is_admin': request.user.is_staff or request.user.is_superuser
     }
@@ -1032,3 +1085,83 @@ def api_stock_receipt(request):
         return JsonResponse({'error': 'Bu barkodla məhsul tapılmadı'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
+    
+@login_required
+@require_http_methods(["POST"])
+def create_good_api(request):
+    """API endpoint for creating new goods"""
+    try:
+        data = json.loads(request.body)
+        print("DEBUG: Creating new product with data:", data)
+        
+        # Tələb olunan sahələri yoxla
+        required_fields = ['name', 'price', 'buy_price', 'shop_id']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'{field} tələb olunur'}, status=400)
+        
+        # Mağazanı yoxla
+        try:
+            shop = Shop.objects.get(id=data['shop_id'])
+        except Shop.DoesNotExist:
+            return JsonResponse({'error': 'Mağaza tapılmadı'}, status=404)
+        
+        # Barcode kontrolü
+        barcode = data.get('barcode', '').strip()
+        if barcode:
+            # Barcode'un bu mağazada mövcud olub olmadığını yoxla
+            if Good.objects.filter(barcode=barcode, shop=shop).exists():
+                return JsonResponse({'error': 'Bu barkod artıq bu mağazada mövcuddur'}, status=400)
+        
+        # Yeni məhsul yarat
+        good = Good(
+            name=data['name'],
+            price=Decimal(str(data['price'])),
+            buy_price=Decimal(str(data['buy_price'])),
+            barcode=barcode,
+            shop=shop,
+            product_type=data.get('product_type', 'normal'),
+            stock_count=0  # Yeni məhsulun stoku 0 olur
+        )
+        
+        # Kateqoriya əlavə et
+        if 'category_id' in data and data['category_id']:
+            try:
+                category = Category.objects.get(id=data['category_id'])
+                good.category = category
+            except Category.DoesNotExist:
+                return JsonResponse({'error': 'Kateqoriya tapılmadı'}, status=404)
+        else:
+            # Default kateqoriya təyin et (ilk kateqoriyanı)
+            first_category = Category.objects.first()
+            if first_category:
+                good.category = first_category
+        
+        good.save()
+        
+        return JsonResponse({
+            'success': True,
+            'good': {
+                'id': good.id,
+                'name': good.name,
+                'barcode': good.barcode,
+                'price': float(good.price),
+                'buy_price': float(good.buy_price),
+                'stock_count': good.stock_count,
+                'category': good.category.name if good.category else '',
+                'category_id': good.category.id if good.category else None
+            },
+            'message': 'Məhsul uğurla yaradıldı'
+        })
+        
+    except Exception as e:
+        print(f"ERROR creating good: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': f'Xəta baş verdi: {str(e)}'}, status=500)
+
+@login_required
+def api_categories(request):
+    """API endpoint to get all categories"""
+    categories = Category.objects.all().values('id', 'name')
+    return JsonResponse({'categories': list(categories)})
