@@ -108,7 +108,15 @@ def scan_barcode(request):
 
 @require_http_methods(["POST"])
 def process_sale(request):
-    data = json.loads(request.body)
+    # First, check if request body exists
+    if not request.body:
+        return JsonResponse({'error': 'Empty request body'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    
     items = data.get('items', [])
     shop_id = data.get('shop_id')
 
@@ -117,11 +125,10 @@ def process_sale(request):
 
     try:
         shop = get_object_or_404(Shop, id=shop_id)
-        current_time = datetime.now()
+        current_time = timezone.now()  # ← FIX: Use timezone-aware datetime
         
         # Use a transaction to ensure atomicity
         with transaction.atomic():
-            # Create all sale records first
             sales_to_create = []
             goods_to_update = []
             
@@ -141,7 +148,7 @@ def process_sale(request):
                     quantity=quantity,
                     total_price=good.price * quantity,
                     shop=shop,
-                    timestamp=current_time
+                    timestamp=current_time  # ← Now timezone-aware
                 ))
                 
                 # Update stock count
@@ -158,6 +165,7 @@ def process_sale(request):
         return JsonResponse({'success': True, 'message': 'Sale completed successfully'})
         
     except Exception as e:
+        logger.error(f"Error processing sale: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
