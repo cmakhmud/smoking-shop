@@ -11,7 +11,7 @@ import logging
 import pytz
 from django.contrib.auth.decorators import login_required
 # Add these missing imports
-from django.db import connection
+from django.db import connection ,transaction
 from django.contrib.auth.models import User
 from django.conf import settings
 from .models import Shop, Category, Good, Sale, Expense ,Debt, DebtItem , StockReceipt
@@ -117,29 +117,46 @@ def process_sale(request):
 
     try:
         shop = get_object_or_404(Shop, id=shop_id)
-        current_time = datetime.now()  # ← Use datetime.now() for computer local time
-
-        for item in items:
-            good = get_object_or_404(Good, id=item['id'], shop=shop)
-            quantity = int(item['quantity'])
-
-            if good.stock_count < quantity:
-                return JsonResponse({
-                    'error': f'Insufficient stock for {good.name}. Available: {good.stock_count}'
-                }, status=400)
-
-            good.stock_count -= quantity
-            good.save()
-
-            Sale.objects.create(
-                good=good,
-                quantity=quantity,
-                total_price=good.price * quantity,
-                shop=shop,
-                timestamp=current_time  # ← Use computer local time
-            )
-
+        current_time = datetime.now()
+        
+        # Use a transaction to ensure atomicity
+        with transaction.atomic():
+            # Create all sale records first
+            sales_to_create = []
+            goods_to_update = []
+            
+            # Validate all items first
+            for item in items:
+                good = get_object_or_404(Good, id=item['id'], shop=shop)
+                quantity = int(item['quantity'])
+                
+                if good.stock_count < quantity:
+                    return JsonResponse({
+                        'error': f'Insufficient stock for {good.name}. Available: {good.stock_count}'
+                    }, status=400)
+                
+                # Prepare sale record
+                sales_to_create.append(Sale(
+                    good=good,
+                    quantity=quantity,
+                    total_price=good.price * quantity,
+                    shop=shop,
+                    timestamp=current_time
+                ))
+                
+                # Update stock count
+                good.stock_count -= quantity
+                goods_to_update.append(good)
+            
+            # Bulk create all sales
+            Sale.objects.bulk_create(sales_to_create)
+            
+            # Bulk update all goods
+            for good in goods_to_update:
+                good.save()
+        
         return JsonResponse({'success': True, 'message': 'Sale completed successfully'})
+        
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
