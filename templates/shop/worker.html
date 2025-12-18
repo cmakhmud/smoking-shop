@@ -201,6 +201,18 @@
     const errorMessage = document.getElementById('error-message');
     const successMessage = document.getElementById('success-message');
 
+    function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
     shopSelect.addEventListener('change', (e) => {
         currentShopId = e.target.value;
         if (currentShopId) {
@@ -428,37 +440,51 @@
     }
 
     completeSaleBtn.addEventListener('click', async () => {
-        if (scannedItems.length === 0) return;
+    if (scannedItems.length === 0) return;
+    
+    // Immediately disable button to prevent double-click
+    completeSaleBtn.disabled = true;
+    completeSaleBtn.innerHTML = '<span class="animate-pulse">İşleniyor...</span>';
+    
+    // Generate unique request ID
+    const requestId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    try {
+        const response = await fetch('/api/sale/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                items: scannedItems,
+                shop_id: currentShopId,
+                request_id: requestId  // Add unique request ID
+            })
+        });
 
-        try {
-            const response = await fetch('/api/sale/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    items: scannedItems,
-                    shop_id: currentShopId
-                })
-            });
+        const data = await response.json();
 
-            const data = await response.json();
-
-            if (response.ok) {
-                showSuccess('Satış uğurla tamamlandı!');
-                scannedItems = [];
-                renderItems();
-                updateTotals();
-                customerPaid.value = '';
-                barcodeInput.focus();
-            } else {
-                showError(data.error || 'Satışı tamamlamaqda xəta');
-            }
-        } catch (error) {
-            showError('Şəbəkə xətası. Zəhmət olmasa yenidən cəhd edin.');
+        if (response.ok) {
+            showSuccess('Satış uğurla tamamlandı!');
+            scannedItems = [];
+            renderItems();
+            updateTotals();
+            customerPaid.value = '';
+            barcodeInput.focus();
+        } else {
+            showError(data.error || 'Satışı tamamlamaqda xəta');
         }
-    });
+    } catch (error) {
+        showError('Şəbəkə xətası. Zəhmət olmasa yenidən cəhd edin.');
+    } finally {
+        // Re-enable button after 3 seconds
+        setTimeout(() => {
+            completeSaleBtn.disabled = false;
+            completeSaleBtn.textContent = 'Satışı Tamamla';
+        }, 3000);
+    }
+});
 
     clearAllBtn.addEventListener('click', () => {
         scannedItems = [];

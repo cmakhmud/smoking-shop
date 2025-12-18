@@ -5,6 +5,8 @@ from django.db.models import Sum, Count, Avg, Q ,ExpressionWrapper ,F ,FloatFiel
 from django.contrib import messages
 from decimal import Decimal
 import json
+import uuid
+from django.core.cache import cache
 from django.utils import timezone
 from datetime import datetime, time as dt_time ,timedelta
 import logging
@@ -117,6 +119,17 @@ def process_sale(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     
+    # Add request ID check
+    request_id = data.get('request_id', str(uuid.uuid4()))
+    cache_key = f'sale_request_{request_id}'
+    
+    # Check if this request was already processed
+    if cache.get(cache_key):
+        return JsonResponse({
+            'success': True, 
+            'message': 'Sale already processed (duplicate request ignored)'
+        })
+    
     items = data.get('items', [])
     shop_id = data.get('shop_id')
 
@@ -125,16 +138,17 @@ def process_sale(request):
 
     try:
         shop = get_object_or_404(Shop, id=shop_id)
-        current_time = timezone.now()  # ← FIX: Use timezone-aware datetime
+        current_time = timezone.now()
         
         # Use a transaction to ensure atomicity
         with transaction.atomic():
             sales_to_create = []
             goods_to_update = []
             
-            # Validate all items first
+            # Validate all items first WITH SELECT FOR UPDATE to lock rows
             for item in items:
-                good = get_object_or_404(Good, id=item['id'], shop=shop)
+                # Use select_for_update() to lock the goods row
+                good = Good.objects.select_for_update().get(id=item['id'], shop=shop)
                 quantity = int(item['quantity'])
                 
                 if good.stock_count < quantity:
@@ -148,7 +162,7 @@ def process_sale(request):
                     quantity=quantity,
                     total_price=good.price * quantity,
                     shop=shop,
-                    timestamp=current_time  # ← Now timezone-aware
+                    timestamp=current_time
                 ))
                 
                 # Update stock count
@@ -161,8 +175,15 @@ def process_sale(request):
             # Bulk update all goods
             for good in goods_to_update:
                 good.save()
+            
+            # Mark request as processed (store for 30 seconds)
+            cache.set(cache_key, True, timeout=30)
         
-        return JsonResponse({'success': True, 'message': 'Sale completed successfully'})
+        return JsonResponse({
+            'success': True, 
+            'message': 'Sale completed successfully',
+            'request_id': request_id  # Return the request ID
+        })
         
     except Exception as e:
         logger.error(f"Error processing sale: {str(e)}")
